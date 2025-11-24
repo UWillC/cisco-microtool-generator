@@ -101,6 +101,26 @@ Cel: **pierwsze demo SaaS do końca Q1 2026**.
 
 ---
 
+## Current modules
+
+### SNMPv3 Config Generator
+
+Generuje kompletną konfigurację SNMPv3 zgodną z najlepszymi praktykami bezpieczeństwa, opartą na danych wejściowych użytkownika.
+
+### NTP Config Generator
+
+Tworzy poprawną i powtarzalną konfigurację NTP, pozwalając szybko zdefiniować serwery czasu i ustawienia bezpieczeństwa.
+
+### AAA/TACACS+ Generator
+
+Buduje szkielet konfiguracji AAA wraz z integracją TACACS+/RADIUS, zapewniając spójny i bezpieczny proces logowania oraz autoryzacji.
+
+### Golden Config Generator
+
+Dostarcza bazowy "golden config" dla nowych urządzeń Cisco, standaryzując początkową konfigurację zgodnie z dobrymi praktykami.
+
+---
+
 ## **Kontakt**
 
 LinkedIn: [https://www.linkedin.com/in/przemyslaw-snow](https://www.linkedin.com/in/przemyslaw-snow)
