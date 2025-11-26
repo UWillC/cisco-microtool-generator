@@ -121,6 +121,22 @@ Dostarcza bazowy "golden config" dla nowych urządzeń Cisco, standaryzując poc
 
 ---
 
+## 🚀 SaaS-ready Demo
+
+This project is evolving into a micro-SaaS focused on generating secure, production-ready configurations for Cisco IOS/XE devices.  
+The goal: automate repetitive CLI work and deliver consistent, security-aligned configs in seconds.
+
+Below is a short demo of the **SNMPv3 Config Generator** running in secure-default mode.
+
+<details>
+  <summary><strong>Click to expand the GIF</strong></summary>
+
+![SNMPv3 Demo](./demo/snmpv3_demo.gif)
+
+</details>
+
+---
+
 ## **Kontakt**
 
 LinkedIn: [https://www.linkedin.com/in/przemyslaw-snow](https://www.linkedin.com/in/przemyslaw-snow)
