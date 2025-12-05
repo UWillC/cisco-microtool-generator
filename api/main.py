@@ -1,5 +1,7 @@
 from fastapi import FastAPI
-from routers import snmpv3, ntp, golden_config, aaa
+from api.routers import snmpv3, ntp, golden_config, aaa
+
+# to test run % python3 -m uvicorn api.main:app --reload --port 8001
 
 app = FastAPI(
     title="Cisco Micro-Tool Generator API",

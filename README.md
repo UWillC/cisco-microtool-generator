@@ -175,6 +175,36 @@ Below is a short demo of the **SNMPv3 Config Generator** running in secure-defau
 
 ---
 
+## 🐳 Run the API with Docker
+
+You can run the Cisco Micro-Tool Generator API as a Docker container.
+
+### 1. Build the image
+
+From the repository root:
+```
+docker build -t cisco-microtool-api .
+```
+
+### 2. Run the container
+```
+docker run --rm -p 8000:8000 cisco-microtool-api
+```
+
+The API will be available at:
+* Health check: http://127.0.0.1:8000/
+* Swagger UI: http://127.0.0.1:8000/docs
+
+From there you can call:
+* POST /generate/snmpv3
+* POST /generate/ntp
+* POST /generate/aaa
+* POST /generate/golden-config
+
+All endpoints return JSON with both the generated configuration and metadata.
+
+---
+
 ## **Status**
 
 The project is under active development.
