@@ -205,6 +205,50 @@ All endpoints return JSON with both the generated configuration and metadata.
 
 ---
 
+## 🖥 Web UI (Experimental)
+
+On top of the FastAPI backend, this project also includes a small web UI for generating configs directly from the browser.
+
+The UI lives in the `web/` folder and supports:
+
+* SNMPv3 Config Generator  
+* NTP Config Generator  
+* AAA / TACACS+ Generator  
+* Golden Config Builder  
+
+It is a thin client on top of the existing API endpoints:
+
+* `POST /generate/snmpv3`  
+* `POST /generate/ntp`  
+* `POST /generate/aaa`  
+* `POST /generate/golden-config`  
+
+### How to run the Web UI (local dev)
+
+1. Start the API (Python):
+
+   ```bash
+   python3 -m uvicorn api.main:app --reload --port 8000
+   ```
+
+or run it via Docker:
+
+  ```bash
+  docker run --rm -p 8000:8000 cisco-microtool-api
+  ```
+
+2. Open the `web/` folder and serve `index.html` using any static file server.
+For example, with VS Code **Live Server** extension:
+* open `web/index.html`
+* choose “Open with Live Server”
+
+3. The UI will send requests to `http://127.0.0.1:8000` (configured in `web/app.js` as `API_BASE_URL`).
+If you change the API port, update `API_BASE_URL` accordingly.
+
+The Web UI is intentionally minimal and focused on network engineers:
+you fill in parameters, click **Generate**, and get a ready-to-paste Cisco configuration.
+---
+
 ## **Status**
 
 The project is under active development.
