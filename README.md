@@ -1,5 +1,6 @@
 # Cisco Micro-Tool Generator  
-### **Automated configuration & security tools for Cisco engineers**
+
+## **Automated configuration & security tools for Cisco engineers**
 
 This project is part of a micro-SaaS toolkit designed for network engineers who work with Cisco IOS/XE.  
 The goal is simple: eliminate repetitive CLI work and generate secure, production-ready configurations in seconds.
@@ -48,7 +49,7 @@ Long-term, this evolves into a **micro-SaaS ecosystem for network engineers**.
 
 ## **Project Structure**
 
-```
+```text
 /cisco-microtool-generator
 │
 ├── snmpv3-generator/
@@ -138,7 +139,7 @@ Generates a golden baseline configuration for new Cisco devices by combining:
 * logging baseline
 * security baseline (with multiple modes in v0.2)
 
-### Golden Config v0.2 can:
+### Golden Config v0.2 can
 
 * auto-detect module config files in the current directory (e.g. snmpv3_config*.txt, ntp_config*.txt, aaa_tacacs*.txt)
 * merge them into a single baseline configuration
@@ -182,20 +183,24 @@ You can run the Cisco Micro-Tool Generator API as a Docker container.
 ### 1. Build the image
 
 From the repository root:
-```
+
+```bash
 docker build -t cisco-microtool-api .
 ```
 
 ### 2. Run the container
-```
+
+```bash
 docker run --rm -p 8000:8000 cisco-microtool-api
 ```
 
 The API will be available at:
-* Health check: http://127.0.0.1:8000/
-* Swagger UI: http://127.0.0.1:8000/docs
+
+* Health check: <http://127.0.0.1:8000/>
+* Swagger UI: <http://127.0.0.1:8000/docs>
 
 From there you can call:
+
 * POST /generate/snmpv3
 * POST /generate/ntp
 * POST /generate/aaa
@@ -239,6 +244,7 @@ or run it via Docker:
 
 2. Open the `web/` folder and serve `index.html` using any static file server.
 For example, with VS Code **Live Server** extension:
+
 * open `web/index.html`
 * choose “Open with Live Server”
 
@@ -246,7 +252,8 @@ For example, with VS Code **Live Server** extension:
 If you change the API port, update `API_BASE_URL` accordingly.
 
 The Web UI is intentionally minimal and focused on network engineers:
-you fill in parameters, click **Generate**, and get a ready-to-paste Cisco configuration.
+you fill in parameters, click **Generate**, and get a ready-to-paste Cisco configuration
+
 ---
 
 ## **Status**
