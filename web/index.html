@@ -18,6 +18,7 @@
       <button class="tab-button" data-tab="ntp">NTP</button>
       <button class="tab-button" data-tab="aaa">AAA / TACACS+</button>
       <button class="tab-button" data-tab="golden">Golden Config</button>
+      <button class="tab-button" data-tab="cve">CVE Analyzer</button>
     </nav>
 
     <!-- SNMPv3 TAB -->
@@ -274,6 +275,41 @@
         <textarea id="golden-output" class="output-text" readonly></textarea>
       </div>
     </section>
+
+    <!-- CVE TAB -->    
+    <section id="tab-cve" class="tab-content">
+      <h2>CVE Analyzer (MVP)</h2>
+      <form id="cve-form" class="card">
+        <div class="form-row">
+          <label>Platform</label>
+          <input type="text" name="platform" value="ISR4451-X" />
+        </div>
+
+        <div class="form-row">
+          <label>Software version</label>
+          <input type="text" name="version" value="17.5.1" />
+        </div>
+
+        <div class="form-row">
+          <label>Include suggestions</label>
+          <select name="include_suggestions">
+            <option value="true" selected>Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn-primary">Analyze CVEs</button>
+      </form>
+
+      <div class="output-card">
+        <div class="output-header">
+          <span>CVE analysis result</span>
+          <button class="btn-secondary" data-copy-target="cve-output">Copy</button>
+        </div>
+        <textarea id="cve-output" class="output-text" readonly></textarea>
+      </div>
+    </section>
+
   </main>
 
   <footer class="footer">

@@ -139,12 +139,74 @@ Generates a golden baseline configuration for new Cisco devices by combining:
 * logging baseline
 * security baseline (with multiple modes in v0.2)
 
-### Golden Config v0.2 can
+### Golden Config v0.2 can:
 
 * auto-detect module config files in the current directory (e.g. snmpv3_config*.txt, ntp_config*.txt, aaa_tacacs*.txt)
 * merge them into a single baseline configuration
 * apply different security profiles: standard, secure, hardened
 * export the final golden config to a file (e.g. golden_config_secure.txt)
+
+### CVE Analyzer (MVP)
+
+The CVE Analyzer module introduces the first “smart” capability in the Cisco Micro-Tool Generator.  
+It allows you to check whether a given Cisco platform and IOS XE software version are affected by any known (demo) CVEs included in the MVP dataset.
+
+**Important:**  
+The CVE database in this MVP is a demo dataset meant for development and testing only.  
+It is **NOT** suitable for production security decisions.
+
+#### How it works
+
+Send a request such as:
+
+```json
+POST /analyze/cve
+{
+  "platform": "ISR4451-X",
+  "version": "17.5.1",
+  "include_suggestions": true
+}
+```
+
+The API responds with:
+
+* matched CVEs (demo dataset)
+* severity and description
+* fixed-in version (if applicable)
+* workarounds
+* advisory links
+* a generated recommendation (optional)
+* timestamp and metadata
+
+Example response:
+
+```json
+{
+  "platform": "ISR4451-X",
+  "version": "17.5.1",
+  "matched_cves": [
+    {
+      "cve_id": "CVE-DEMO-0001",
+      "severity": "critical",
+      "title": "Example privilege escalation in IOS XE web management",
+      "workaround": "Disable HTTP/HTTPS management on WAN-facing interfaces."
+    }
+  ],
+  "recommended_action": "One or more critical/high issues affect this platform/version. Consider upgrading to at least IOS XE 17.7.1.",
+  "timestamp": "2025-12-06T18:30:00Z",
+  "note": "This CVE data is a demo dataset for the Cisco Micro-Tool Generator MVP."
+}
+```
+
+#### Web UI Integration
+
+The Web UI now includes a CVE Analyzer tab where you can:
+
+* type platform + software version
+* click Analyze CVEs
+* instantly see results, recommendations, and advisories
+
+This marks the first step toward building deeper Cisco automation and security intelligence features.
 
 ---
 

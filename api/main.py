@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import snmpv3, ntp, golden_config, aaa
+from api.routers import snmpv3, ntp, golden_config, aaa, cve
+
 
 # to run backend cd /Users/uwillc/SaaS/cisco-microtool-generator
 # python3 -m uvicorn api.main:app --reload --port 8000
@@ -32,7 +33,7 @@ app.include_router(snmpv3.router, prefix="/generate", tags=["SNMPv3"])
 app.include_router(ntp.router, prefix="/generate", tags=["NTP"])
 app.include_router(golden_config.router, prefix="/generate", tags=["Golden Config"])
 app.include_router(aaa.router, prefix="/generate", tags=["AAA / TACACS+"])
-
+app.include_router(cve.router, prefix="/analyze", tags=["CVE Analyzer"])
 
 @app.get("/")
 def root():
