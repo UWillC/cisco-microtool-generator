@@ -1,0 +1,22 @@
+{
+  "name": "lab",
+  "description": "Default lab environment profile",
+  "snmp": {
+    "host": "10.0.0.10",
+    "user": "lab-monitor",
+    "group": "lab_grp",
+    "auth_password": "LabSnmpAuth123",
+    "priv_password": "LabSnmpPriv123"
+  },
+  "ntp": {
+    "primary_server": "0.pool.ntp.org",
+    "secondary_server": "1.pool.ntp.org",
+    "timezone": "UTC"
+  },
+  "aaa": {
+    "enable_secret": "LabEnable123",
+    "tacacs1_name": "lab-tacacs",
+    "tacacs1_ip": "10.0.0.20",
+    "tacacs1_key": "LabTacacsKey123"
+  }
+}

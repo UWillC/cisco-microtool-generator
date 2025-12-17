@@ -27,8 +27,9 @@ class AAAProfile(BaseModel):
 
 
 class DeviceProfile(BaseModel):
-    """Full multi-generator device profile"""
+    """Full multi-generator device profile V2"""
     name: str
+    description: Optional[str] = None
     snmp: SNMPProfile = SNMPProfile()
     ntp: NTPProfile = NTPProfile()
     aaa: AAAProfile = AAAProfile()

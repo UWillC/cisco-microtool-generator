@@ -1,0 +1,22 @@
+{
+  "name": "branch",
+  "description": "Default branch environment profile",
+  "snmp": {
+    "host": "192.168.0.10",
+    "user": "branch-monitor",
+    "group": "branch_grp",
+    "auth_password": "BranchSnmpAuth123",
+    "priv_password": "BranchSnmpPriv123"
+  },
+  "ntp": {
+    "primary_server": "0.pool.ntp.org",
+    "secondary_server": "1.pool.ntp.org",
+    "timezone": "UTC"
+  },
+  "aaa": {
+    "enable_secret": "BranchEnable123",
+    "tacacs1_name": "branch-tacacs",
+    "tacacs1_ip": "192.168.0.20",
+    "tacacs1_key": "BranchTacacsKey123"
+  }
+}

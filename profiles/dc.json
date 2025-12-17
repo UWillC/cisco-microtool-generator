@@ -1,0 +1,22 @@
+{
+  "name": "dc",
+  "description": "Default dc environment profile",
+  "snmp": {
+    "host": "172.16.0.10",
+    "user": "dc-monitor",
+    "group": "dc_grp",
+    "auth_password": "DcSnmpAuth123",
+    "priv_password": "DcSnmpPriv123"
+  },
+  "ntp": {
+    "primary_server": "0.pool.ntp.org",
+    "secondary_server": "1.pool.ntp.org",
+    "timezone": "UTC"
+  },
+  "aaa": {
+    "enable_secret": "DcEnable123",
+    "tacacs1_name": "dc-tacacs",
+    "tacacs1_ip": "172.16.0.20",
+    "tacacs1_key": "DcTacacsKey123"
+  }
+}
