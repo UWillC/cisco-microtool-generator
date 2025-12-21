@@ -343,6 +343,26 @@ Each generator output panel now includes a **Download** button that exports the 
 
 These UX improvements aim to move the project closer to a real micro-SaaS experience, not just a backend API with forms.
 
+## 📁 Profiles v2 (UI + API)
+
+Profiles v2 introduces reusable configuration presets stored on the backend and managed directly from the Web UI.
+
+### What you can do
+
+- **Save** the current SNMPv3 / NTP / AAA form values as a named profile
+- **List** available profiles stored on the API side
+- **Load** a profile to auto-populate the forms
+- **Delete** profiles you no longer need
+
+### API endpoints
+
+- `GET /profiles/list`
+- `GET /profiles/load/{name}`
+- `POST /profiles/save`
+- `DELETE /profiles/delete/{name}`
+
+> 💡 Tip: If you run the API in Docker and want profiles to persist across container restarts, mount the `profiles/` directory as a volume.
+
 ---
 
 ## **Status**
