@@ -12,7 +12,7 @@
     <div class="subtitle">Secure config generator for Cisco IOS/XE</div>
   </header>
 
-    <main class="layout">
+  <main class="layout">
 
     <!-- Sidebar navigation -->
     <aside class="sidebar card">
@@ -32,9 +32,10 @@
 
     <!-- Main panel -->
     <section class="container main-panel">
-      <!-- Profiles bar stays on top -->
+
+      <!-- Top quick profiles (legacy presets) -->
       <div class="profile-bar card">
-        <div class="profile-bar-label">Profiles</div>
+        <div class="profile-bar-label">Quick profiles</div>
         <div class="profile-bar-controls">
           <select id="global-profile">
             <option value="">Custom</option>
@@ -313,7 +314,7 @@
         </div>
       </section>
 
-      <!-- CVE TAB -->    
+      <!-- CVE TAB -->
       <section id="tab-cve" class="tab-content">
         <h2>CVE Analyzer (v0.2)</h2>
         <form id="cve-form" class="card">
@@ -348,6 +349,9 @@
               </div>
             </div>
             <textarea id="cve-output" class="output-text" readonly></textarea>
+
+            <!-- Collapsible CVE cards -->
+            <div id="cve-cards"></div>
           </div>
 
           <div class="summary-card" id="cve-summary">
@@ -369,8 +373,13 @@
             <h3>Saved profiles</h3>
 
             <div class="form-row">
+              <label>Search</label>
+              <input id="profiles-search" type="text" placeholder="Type to filter profiles..." />
+            </div>
+
+            <div class="form-row">
               <label>Available profiles</label>
-              <select id="profiles-select"></select>
+              <select id="profiles-select" size="8"></select>
             </div>
 
             <div class="profiles-actions">
@@ -379,9 +388,18 @@
               <button id="profiles-delete" class="btn-secondary">Delete</button>
             </div>
 
-            <div class="profiles-status" id="profiles-status">
-              Ready.
+            <div class="form-row inline-row">
+              <label class="inline-label">
+                <input id="profiles-confirm-delete" type="checkbox" />
+                I understand this will permanently delete the selected profile
+              </label>
             </div>
+
+            <div class="profiles-status" id="profiles-status">Ready.</div>
+
+            <p class="profiles-hint">
+              Profiles are stored on the backend. Use Docker volume mapping to persist them across restarts.
+            </p>
           </div>
 
           <!-- Right: create/save -->

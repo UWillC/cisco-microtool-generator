@@ -33,7 +33,6 @@ document
 
       textarea.select();
       textarea.setSelectionRange(0, 99999);
-
       document.execCommand("copy");
 
       const original = btn.textContent;
@@ -76,17 +75,13 @@ document
 async function postJSON(path, payload) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(
-      `Request failed (${res.status}): ${text || res.statusText}`
-    );
+    throw new Error(`Request failed (${res.status}): ${text || res.statusText}`);
   }
 
   return res.json();
@@ -112,7 +107,11 @@ function loadFormState(key, formElement) {
     Object.entries(data).forEach(([name, value]) => {
       const field = formElement.querySelector(`[name="${name}"]`);
       if (!field || value === undefined || value === null) return;
-      if (field.tagName === "SELECT" || field.tagName === "INPUT" || field.tagName === "TEXTAREA") {
+      if (
+        field.tagName === "SELECT" ||
+        field.tagName === "INPUT" ||
+        field.tagName === "TEXTAREA"
+      ) {
         field.value = value;
       }
     });
@@ -122,9 +121,31 @@ function loadFormState(key, formElement) {
 }
 
 // -----------------------------
-// Profiles (Lab / Branch / DC)
+// Toast helper (UX polish)
 // -----------------------------
-const profiles = {
+function showToast(title, message) {
+  const existing = document.getElementById("toast");
+  if (existing) existing.remove();
+
+  const div = document.createElement("div");
+  div.id = "toast";
+  div.className = "toast";
+  div.innerHTML = `
+    <div class="toast-title">${title}</div>
+    <div>${message}</div>
+  `;
+  document.body.appendChild(div);
+
+  setTimeout(() => {
+    const el = document.getElementById("toast");
+    if (el) el.remove();
+  }, 2200);
+}
+
+// -----------------------------
+// Quick profiles (legacy presets)
+// -----------------------------
+const profilesPresets = {
   "lab-router": {
     snmp: {
       host: "10.0.0.10",
@@ -187,51 +208,47 @@ const profiles = {
   },
 };
 
-function applyProfile(profileKey) {
-  const profile = profiles[profileKey];
+function applyPresetProfile(profileKey) {
+  const profile = profilesPresets[profileKey];
   if (!profile) return;
 
-  // SNMPv3
   const snmpForm = document.getElementById("snmpv3-form");
-  if (snmpForm && profile.snmp) {
-    const set = (name, val) => {
-      const field = snmpForm.querySelector(`[name="${name}"]`);
-      if (field && val) field.value = val;
-    };
-    set("host", profile.snmp.host);
-    set("user", profile.snmp.user);
-    set("group", profile.snmp.group);
-    set("auth_password", profile.snmp.auth_password);
-    set("priv_password", profile.snmp.priv_password);
-  }
-
-  // NTP
   const ntpForm = document.getElementById("ntp-form");
-  if (ntpForm && profile.ntp) {
-    const set = (name, val) => {
-      const field = ntpForm.querySelector(`[name="${name}"]`);
-      if (field && val) field.value = val;
-    };
-    set("primary_server", profile.ntp.primary_server);
-    set("secondary_server", profile.ntp.secondary_server);
-    set("timezone", profile.ntp.timezone);
+  const aaaForm = document.getElementById("aaa-form");
+
+  const setField = (form, name, val) => {
+    if (!form) return;
+    const field = form.querySelector(`[name="${name}"]`);
+    if (!field) return;
+    if (val === undefined || val === null || val === "") return;
+    field.value = val;
+  };
+
+  if (snmpForm && profile.snmp) {
+    setField(snmpForm, "host", profile.snmp.host);
+    setField(snmpForm, "user", profile.snmp.user);
+    setField(snmpForm, "group", profile.snmp.group);
+    setField(snmpForm, "auth_password", profile.snmp.auth_password);
+    setField(snmpForm, "priv_password", profile.snmp.priv_password);
+    saveFormState("snmpv3-form", snmpForm);
   }
 
-  // AAA
-  const aaaForm = document.getElementById("aaa-form");
+  if (ntpForm && profile.ntp) {
+    setField(ntpForm, "primary_server", profile.ntp.primary_server);
+    setField(ntpForm, "secondary_server", profile.ntp.secondary_server);
+    setField(ntpForm, "timezone", profile.ntp.timezone);
+    saveFormState("ntp-form", ntpForm);
+  }
+
   if (aaaForm && profile.aaa) {
-    const set = (name, val) => {
-      const field = aaaForm.querySelector(`[name="${name}"]`);
-      if (field && val) field.value = val;
-    };
-    set("enable_secret", profile.aaa.enable_secret);
-    set("tacacs1_name", profile.aaa.tacacs1_name);
-    set("tacacs1_ip", profile.aaa.tacacs1_ip);
-    set("tacacs1_key", profile.aaa.tacacs1_key);
+    setField(aaaForm, "enable_secret", profile.aaa.enable_secret);
+    setField(aaaForm, "tacacs1_name", profile.aaa.tacacs1_name);
+    setField(aaaForm, "tacacs1_ip", profile.aaa.tacacs1_ip);
+    setField(aaaForm, "tacacs1_key", profile.aaa.tacacs1_key);
+    saveFormState("aaa-form", aaaForm);
   }
 }
 
-// Global profile selector
 const globalProfileSelect = document.getElementById("global-profile");
 const applyProfileBtn = document.getElementById("apply-profile");
 
@@ -239,7 +256,8 @@ if (applyProfileBtn && globalProfileSelect) {
   applyProfileBtn.addEventListener("click", () => {
     const key = globalProfileSelect.value;
     if (!key) return;
-    applyProfile(key);
+    applyPresetProfile(key);
+    showToast("Profile applied", key);
   });
 }
 
@@ -250,7 +268,6 @@ const snmpForm = document.getElementById("snmpv3-form");
 const snmpOutput = document.getElementById("snmpv3-output");
 
 if (snmpForm && snmpOutput) {
-  // load previous state
   loadFormState("snmpv3-form", snmpForm);
 
   snmpForm.addEventListener("submit", async (e) => {
@@ -269,7 +286,6 @@ if (snmpForm && snmpOutput) {
       output_format: formData.get("output_format"),
     };
 
-    // save last used values
     saveFormState("snmpv3-form", snmpForm);
 
     try {
@@ -333,7 +349,6 @@ if (aaaForm && aaaOutput) {
     aaaOutput.value = "Generating AAA config...";
 
     const formData = new FormData(aaaForm);
-
     const payload = {
       device: formData.get("device"),
       mode: formData.get("mode") === "local-only" ? "local-only" : "tacacs",
@@ -373,7 +388,6 @@ if (goldenForm && goldenOutput) {
     goldenOutput.value = "Generating Golden Config...";
 
     const formData = new FormData(goldenForm);
-
     const payload = {
       device: formData.get("device"),
       mode: formData.get("mode"),
@@ -395,11 +409,13 @@ if (goldenForm && goldenOutput) {
 }
 
 // -----------------------------
-// CVE Analyzer form
+// CVE Analyzer form (v0.2)
+// + Security summary + Collapsible cards
 // -----------------------------
 const cveForm = document.getElementById("cve-form");
 const cveOutput = document.getElementById("cve-output");
 const cveSummary = document.getElementById("cve-summary");
+const cveCards = document.getElementById("cve-cards");
 
 if (cveForm && cveOutput) {
   loadFormState("cve-form", cveForm);
@@ -407,9 +423,9 @@ if (cveForm && cveOutput) {
   cveForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     cveOutput.value = "Analyzing CVEs...";
+    if (cveCards) cveCards.innerHTML = "";
 
     const formData = new FormData(cveForm);
-
     const payload = {
       platform: formData.get("platform"),
       version: formData.get("version"),
@@ -422,8 +438,7 @@ if (cveForm && cveOutput) {
       const data = await postJSON("/analyze/cve", payload);
 
       if (!data.matched || data.matched.length === 0) {
-        let out = "No CVEs matched for this platform/version.\n\n";
-        cveOutput.value = out;
+        cveOutput.value = "No CVEs matched for this platform/version.\n";
 
         if (cveSummary) {
           cveSummary.innerHTML = `
@@ -436,6 +451,7 @@ if (cveForm && cveOutput) {
         return;
       }
 
+      // Text report output
       let out = "";
       out += `Platform: ${data.platform}\n`;
       out += `Version: ${data.version}\n`;
@@ -443,9 +459,9 @@ if (cveForm && cveOutput) {
 
       out += "Matched CVEs:\n";
       data.matched.forEach((cve) => {
-        out += `${cve.cve_id} [${cve.severity.toUpperCase()}]\n`;
+        out += `${cve.cve_id} [${(cve.severity || "").toUpperCase()}]\n`;
         out += `  Title: ${cve.title}\n`;
-        out += `  Tags: ${cve.tags.join(", ")}\n`;
+        out += `  Tags: ${(cve.tags || []).join(", ")}\n`;
         out += `  Description: ${cve.description}\n`;
         if (cve.fixed_in) out += `  Fixed in: ${cve.fixed_in}\n`;
         if (cve.workaround) out += `  Workaround: ${cve.workaround}\n`;
@@ -453,7 +469,7 @@ if (cveForm && cveOutput) {
       });
 
       out += "Summary:\n";
-      Object.entries(data.summary).forEach(([sev, count]) => {
+      Object.entries(data.summary || {}).forEach(([sev, count]) => {
         out += `  ${sev}: ${count}\n`;
       });
 
@@ -463,6 +479,53 @@ if (cveForm && cveOutput) {
 
       cveOutput.value = out;
 
+      // Collapsible CVE cards
+      if (cveCards) {
+        const badgeClass = (sev) => {
+          const s = (sev || "").toLowerCase();
+          if (s === "critical") return "severity-badge sev-critical";
+          if (s === "high") return "severity-badge sev-high";
+          if (s === "medium") return "severity-badge sev-medium";
+          return "severity-badge sev-low";
+        };
+
+        cveCards.innerHTML = "";
+        data.matched.forEach((cve) => {
+          const card = document.createElement("div");
+          card.className = "cve-item";
+
+          card.innerHTML = `
+            <div class="cve-item-header">
+              <div>
+                <div class="cve-item-title">
+                  <span class="${badgeClass(cve.severity)}">${(cve.severity || "").toUpperCase()}</span>
+                  ${cve.cve_id} — ${cve.title}
+                </div>
+                <div class="cve-item-meta">
+                  Tags: ${(cve.tags || []).join(", ")}${cve.fixed_in ? ` • Fixed in: ${cve.fixed_in}` : ""}
+                </div>
+              </div>
+              <div class="cve-item-meta">Click</div>
+            </div>
+
+            <div class="cve-item-body">
+              <div><strong>Description:</strong> ${cve.description}</div>
+              ${cve.workaround ? `<div style="margin-top:8px;"><strong>Workaround:</strong> ${cve.workaround}</div>` : ""}
+              ${cve.advisory_url ? `<div style="margin-top:8px;"><strong>Advisory:</strong> ${cve.advisory_url}</div>` : ""}
+            </div>
+          `;
+
+          const header = card.querySelector(".cve-item-header");
+          const body = card.querySelector(".cve-item-body");
+          header.addEventListener("click", () => {
+            body.classList.toggle("open");
+          });
+
+          cveCards.appendChild(card);
+        });
+      }
+
+      // Security posture summary
       if (cveSummary) {
         const s = data.summary || {};
         const critical = s.critical || 0;
@@ -472,9 +535,7 @@ if (cveForm && cveOutput) {
 
         cveSummary.innerHTML = `
           <h3>Security posture</h3>
-          <div class="summary-row">
-            <span>Severity breakdown</span>
-          </div>
+          <div class="summary-row"><span>Severity breakdown</span></div>
           <div class="summary-row">
             <span>
               <span class="severity-badge sev-critical">CRITICAL</span>
@@ -483,10 +544,7 @@ if (cveForm && cveOutput) {
               <span class="severity-badge sev-low">LOW</span>
             </span>
           </div>
-          <div class="summary-row">
-            <span>Counts</span>
-            <span>${critical} / ${high} / ${medium} / ${low}</span>
-          </div>
+          <div class="summary-row"><span>Counts</span><span>${critical} / ${high} / ${medium} / ${low}</span></div>
           ${
             data.recommended_upgrade
               ? `<div class="summary-upgrade">
@@ -499,7 +557,6 @@ if (cveForm && cveOutput) {
           }
         `;
       }
-
     } catch (err) {
       cveOutput.value = `Error: ${err.message}`;
       if (cveSummary) {
@@ -509,19 +566,19 @@ if (cveForm && cveOutput) {
         `;
       }
     }
-
   });
 }
 
 // -----------------------------
-// Profiles UI v2 (backend-driven)
+// Profiles UI v2 (backend-driven) + UX polish
 // Endpoints used:
-// - GET    /profiles/list            -> { profiles: ["lab", "branch"] }
-// - GET    /profiles/load/{name}     -> DeviceProfile JSON
-// - POST   /profiles/save            -> DeviceProfile JSON
-// - DELETE /profiles/delete/{name}   -> { status: "deleted" }
+// - GET    /profiles/list
+// - GET    /profiles/load/{name}
+// - POST   /profiles/save
+// - DELETE /profiles/delete/{name}
 // -----------------------------
-
+const profilesSearch = document.getElementById("profiles-search");
+const profilesConfirmDelete = document.getElementById("profiles-confirm-delete");
 const profilesSelect = document.getElementById("profiles-select");
 const profilesRefreshBtn = document.getElementById("profiles-refresh");
 const profilesLoadBtn = document.getElementById("profiles-load");
@@ -534,6 +591,8 @@ const profileDescriptionInput = document.getElementById("profile-description");
 const profilesStatus = document.getElementById("profiles-status");
 const profilesPreview = document.getElementById("profiles-preview");
 
+let profilesCache = [];
+
 function setProfilesStatus(message) {
   if (!profilesStatus) return;
   profilesStatus.textContent = message;
@@ -544,12 +603,27 @@ function setProfilesPreview(message) {
   profilesPreview.textContent = message;
 }
 
+function setBtnEnabled(btn, enabled) {
+  if (!btn) return;
+  if (enabled) btn.classList.remove("btn-disabled");
+  else btn.classList.add("btn-disabled");
+}
+
+function getSelectedProfileName() {
+  if (!profilesSelect) return "";
+  return profilesSelect.value || "";
+}
+
+function updateProfilesButtonsState() {
+  const hasSelection = !!getSelectedProfileName();
+  setBtnEnabled(profilesLoadBtn, hasSelection);
+  setBtnEnabled(profilesDeleteBtn, hasSelection);
+}
+
 async function fetchProfilesList() {
-  const data = await fetch(`${API_BASE_URL}/profiles/list`);
-  if (!data.ok) {
-    throw new Error(`Profiles list failed (${data.status})`);
-  }
-  return data.json();
+  const res = await fetch(`${API_BASE_URL}/profiles/list`);
+  if (!res.ok) throw new Error(`Profiles list failed (${res.status})`);
+  return res.json();
 }
 
 async function fetchProfile(name) {
@@ -585,8 +659,36 @@ async function deleteProfile(name) {
   return res.json();
 }
 
+function renderProfilesOptions(filterText = "") {
+  if (!profilesSelect) return;
+
+  const ft = (filterText || "").toLowerCase();
+  const filtered = profilesCache.filter((p) => p.toLowerCase().includes(ft));
+
+  profilesSelect.innerHTML = "";
+
+  if (filtered.length === 0) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "(no matches)";
+    profilesSelect.appendChild(opt);
+    updateProfilesButtonsState();
+    return;
+  }
+
+  filtered.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    profilesSelect.appendChild(opt);
+  });
+
+  // Auto-select first after render (nice UX)
+  profilesSelect.value = filtered[0] || "";
+  updateProfilesButtonsState();
+}
+
 function getCurrentFormSnapshot() {
-  // SNMPv3 form snapshot
   const snmpForm = document.getElementById("snmpv3-form");
   const ntpForm = document.getElementById("ntp-form");
   const aaaForm = document.getElementById("aaa-form");
@@ -626,7 +728,6 @@ function getCurrentFormSnapshot() {
 }
 
 function applyProfileToForms(profileData) {
-  // Applies only SNMP/NTP/AAA keys that exist in the profile payload.
   const snmpForm = document.getElementById("snmpv3-form");
   const ntpForm = document.getElementById("ntp-form");
   const aaaForm = document.getElementById("aaa-form");
@@ -663,7 +764,6 @@ function applyProfileToForms(profileData) {
     setField(aaaForm, "tacacs2_key", profileData.aaa.tacacs2_key);
   }
 
-  // Persist form state in localStorage (re-using your existing persistence)
   if (snmpForm) saveFormState("snmpv3-form", snmpForm);
   if (ntpForm) saveFormState("ntp-form", ntpForm);
   if (aaaForm) saveFormState("aaa-form", aaaForm);
@@ -677,36 +777,40 @@ async function refreshProfilesUI() {
 
   try {
     const data = await fetchProfilesList();
-    const profiles = data.profiles || [];
+    profilesCache = data.profiles || [];
 
-    if (profiles.length === 0) {
+    if (profilesCache.length === 0) {
       profilesSelect.innerHTML = `<option value="">(no profiles found)</option>`;
       setProfilesStatus("No profiles found on the backend. Save one to get started.");
+      updateProfilesButtonsState();
       return;
     }
 
-    profiles.forEach((name) => {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      profilesSelect.appendChild(opt);
-    });
-
-    setProfilesStatus(`Loaded ${profiles.length} profile(s).`);
+    renderProfilesOptions(profilesSearch ? profilesSearch.value : "");
+    setProfilesStatus(`Loaded ${profilesCache.length} profile(s).`);
   } catch (err) {
     setProfilesStatus(`Error: ${err.message}`);
+    updateProfilesButtonsState();
   }
 }
 
-function getSelectedProfileName() {
-  if (!profilesSelect) return "";
-  return profilesSelect.value || "";
+// Wire up listeners once (no duplicates)
+if (profilesSelect) {
+  profilesSelect.addEventListener("change", () => {
+    updateProfilesButtonsState();
+  });
 }
 
-// Wire up buttons
+if (profilesSearch) {
+  profilesSearch.addEventListener("input", () => {
+    renderProfilesOptions(profilesSearch.value);
+  });
+}
+
 if (profilesRefreshBtn) {
   profilesRefreshBtn.addEventListener("click", async () => {
     await refreshProfilesUI();
+    showToast("Profiles", "Refreshed list");
   });
 }
 
@@ -724,12 +828,12 @@ if (profilesLoadBtn) {
       const profile = await fetchProfile(name);
       applyProfileToForms(profile);
 
-      // Update UI fields for visibility
       if (profileNameInput) profileNameInput.value = profile.name || name;
       if (profileDescriptionInput) profileDescriptionInput.value = profile.description || "";
 
       setProfilesStatus(`Profile loaded: ${name}. Forms updated.`);
       setProfilesPreview(JSON.stringify(profile, null, 2));
+      showToast("Profile loaded", name);
     } catch (err) {
       setProfilesStatus(`Error: ${err.message}`);
     }
@@ -744,11 +848,20 @@ if (profilesDeleteBtn) {
       return;
     }
 
+    if (!profilesConfirmDelete || !profilesConfirmDelete.checked) {
+      setProfilesStatus("Tick the confirmation checkbox before deleting.");
+      showToast("Delete blocked", "Enable confirmation checkbox to delete a profile.");
+      return;
+    }
+
     setProfilesStatus(`Deleting profile: ${name}...`);
 
     try {
       await deleteProfile(name);
       setProfilesStatus(`Deleted profile: ${name}`);
+      setProfilesPreview(`Deleted: ${name}`);
+      if (profilesConfirmDelete) profilesConfirmDelete.checked = false;
+      showToast("Profile deleted", name);
       await refreshProfilesUI();
     } catch (err) {
       setProfilesStatus(`Error: ${err.message}`);
@@ -758,15 +871,14 @@ if (profilesDeleteBtn) {
 
 if (profilesSaveBtn) {
   profilesSaveBtn.addEventListener("click", async () => {
-    const name = (profileNameInput && profileNameInput.value || "").trim();
-    const description = (profileDescriptionInput && profileDescriptionInput.value || "").trim();
+    const name = ((profileNameInput && profileNameInput.value) || "").trim();
+    const description = ((profileDescriptionInput && profileDescriptionInput.value) || "").trim();
 
     if (!name) {
       setProfilesStatus("Profile name is required.");
       return;
     }
 
-    // Build payload from current form values
     const snapshot = getCurrentFormSnapshot();
     const payload = {
       name,
@@ -782,13 +894,18 @@ if (profilesSaveBtn) {
       await saveProfile(payload);
       setProfilesStatus(`Saved profile: ${name}`);
       setProfilesPreview(JSON.stringify(payload, null, 2));
+      showToast("Profile saved", name);
       await refreshProfilesUI();
+
+      // keep selection after refresh if available
       if (profilesSelect) profilesSelect.value = name;
+      updateProfilesButtonsState();
     } catch (err) {
       setProfilesStatus(`Error: ${err.message}`);
     }
   });
 }
 
-// Auto-load list on page load
+// Initial state
+updateProfilesButtonsState();
 refreshProfilesUI();
