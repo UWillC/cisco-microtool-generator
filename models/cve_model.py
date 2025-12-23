@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
@@ -11,11 +11,23 @@ class CVEEntry(BaseModel):
     cve_id: str
     title: str
     severity: str  # critical/high/medium/low
-    platforms: List[str]
+
+    platforms: List[str] = Field(default_factory=list)
     affected: CVEAffectedRange
+
     fixed_in: Optional[str] = None
-    tags: List[str] = []
+    tags: List[str] = Field(default_factory=list)
+
     description: str
     workaround: Optional[str] = None
     advisory_url: Optional[str] = None
+
     confidence: str = "demo"  # demo | validated | partial
+
+    # v0.3 (optional metadata for external feeds / SaaS)
+    source: Optional[str] = None  # e.g. "local-json" / "cisco" / "nvd" / "tenable"
+    cvss_score: Optional[float] = None
+    cwe: Optional[str] = None
+    published: Optional[str] = None
+    last_modified: Optional[str] = None
+    references: List[str] = Field(default_factory=list)

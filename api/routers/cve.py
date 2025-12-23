@@ -1,7 +1,8 @@
+import datetime
+from typing import List, Optional
+
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import List, Optional
-import datetime
 
 from services.cve_engine import CVEEngine
 from models.cve_model import CVEEntry
@@ -33,14 +34,13 @@ class CVEAnalyzeResponse(BaseModel):
 # -----------------------------
 @router.post("/cve", response_model=CVEAnalyzeResponse)
 def analyze_cve(req: CVEAnalyzeRequest):
-
     engine = CVEEngine()
     engine.load_all()
+
     matched = engine.match(req.platform, req.version)
-
     summary = engine.summary(matched)
-    recommendation = None
 
+    recommendation = None
     if req.include_suggestions:
         recommendation = engine.recommended_upgrade(matched)
 
