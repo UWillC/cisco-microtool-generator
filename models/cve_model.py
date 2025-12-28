@@ -24,9 +24,10 @@ class CVEEntry(BaseModel):
 
     confidence: str = "demo"  # demo | validated | partial
 
-    # v0.3 (optional metadata for external feeds / SaaS)
-    source: Optional[str] = None  # e.g. "local-json" / "cisco" / "nvd" / "tenable"
+    # v0.3+ metadata (optional, SaaS-ready)
+    source: Optional[str] = None  # local-json | cisco | nvd | tenable
     cvss_score: Optional[float] = None
+    cvss_vector: Optional[str] = None
     cwe: Optional[str] = None
     published: Optional[str] = None
     last_modified: Optional[str] = None

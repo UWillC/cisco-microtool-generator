@@ -9,7 +9,7 @@ from models.cve_model import CVEEntry
 class CVEProvider(ABC):
     """
     Provider interface (SaaS-ready).
-    Later you can implement:
+    Future providers:
       - Cisco Security Advisories provider
       - NVD provider
       - Tenable provider
@@ -26,13 +26,24 @@ class LocalJsonProvider(CVEProvider):
     """
     Default provider: loads curated CVE JSON files from a directory.
 
-    Expected file shape matches CVEEntry (Pydantic) schema.
+    v0.3.1:
+      - Ensures `source` is set (defaults to provider name).
+      - Tolerates unknown fields in JSON as long as CVEEntry schema supports them.
     """
 
     name = "local-json"
 
     def __init__(self, data_dir: str):
         self.data_dir = data_dir
+
+    def _ensure_source(self, entry: CVEEntry) -> CVEEntry:
+        if getattr(entry, "source", None):
+            return entry
+
+        # Pydantic v2 uses model_copy; v1 uses copy
+        if hasattr(entry, "model_copy"):
+            return entry.model_copy(update={"source": self.name})
+        return entry.copy(update={"source": self.name})  # type: ignore[attr-defined]
 
     def load(self) -> List[CVEEntry]:
         results: List[CVEEntry] = []
@@ -47,7 +58,10 @@ class LocalJsonProvider(CVEProvider):
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                results.append(CVEEntry(**data))
+
+                entry = CVEEntry(**data)
+                entry = self._ensure_source(entry)
+                results.append(entry)
             except Exception as e:
                 print(f"[WARN] Skipping invalid CVE file: {filename} ({e})")
 
@@ -58,11 +72,6 @@ class LocalJsonProvider(CVEProvider):
 # Future providers (stubs)
 # -----------------------------
 class CiscoAdvisoryProvider(CVEProvider):
-    """
-    Future:
-      - Pull Cisco Security Advisories
-      - Map advisories to CVE entries and version ranges
-    """
     name = "cisco-advisories"
 
     def load(self) -> List[CVEEntry]:
@@ -70,10 +79,6 @@ class CiscoAdvisoryProvider(CVEProvider):
 
 
 class NvdProvider(CVEProvider):
-    """
-    Future:
-      - Query NVD and normalize records into CVEEntry format.
-    """
     name = "nvd"
 
     def load(self) -> List[CVEEntry]:
@@ -81,10 +86,6 @@ class NvdProvider(CVEProvider):
 
 
 class TenableProvider(CVEProvider):
-    """
-    Future:
-      - Use Tenable CVE search / feed to enrich metadata (CVSS, references).
-    """
     name = "tenable"
 
     def load(self) -> List[CVEEntry]:

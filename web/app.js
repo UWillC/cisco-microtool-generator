@@ -409,13 +409,20 @@ if (goldenForm && goldenOutput) {
 }
 
 // -----------------------------
-// CVE Analyzer form (v0.2)
+// CVE Analyzer form (v0.3.1 data enrichment visible)
 // + Security summary + Collapsible cards
 // -----------------------------
 const cveForm = document.getElementById("cve-form");
 const cveOutput = document.getElementById("cve-output");
 const cveSummary = document.getElementById("cve-summary");
 const cveCards = document.getElementById("cve-cards");
+
+function formatCvss(score) {
+  if (score === null || score === undefined) return "N/A";
+  const n = Number(score);
+  if (Number.isNaN(n)) return "N/A";
+  return n.toFixed(1);
+}
 
 if (cveForm && cveOutput) {
   loadFormState("cve-form", cveForm);
@@ -461,11 +468,20 @@ if (cveForm && cveOutput) {
       data.matched.forEach((cve) => {
         out += `${cve.cve_id} [${(cve.severity || "").toUpperCase()}]\n`;
         out += `  Title: ${cve.title}\n`;
+        out += `  Source: ${cve.source || "N/A"}\n`;
+        out += `  CVSS: ${formatCvss(cve.cvss_score)}${
+          cve.cvss_vector ? ` (${cve.cvss_vector})` : ""
+        }\n`;
+        if (cve.cwe) out += `  CWE: ${cve.cwe}\n`;
         out += `  Tags: ${(cve.tags || []).join(", ")}\n`;
         out += `  Description: ${cve.description}\n`;
         if (cve.fixed_in) out += `  Fixed in: ${cve.fixed_in}\n`;
         if (cve.workaround) out += `  Workaround: ${cve.workaround}\n`;
-        out += `  Advisory: ${cve.advisory_url}\n\n`;
+        out += `  Advisory: ${cve.advisory_url}\n`;
+        if (cve.references && cve.references.length > 0) {
+          out += `  References: ${cve.references.join(" | ")}\n`;
+        }
+        out += "\n";
       });
 
       out += "Summary:\n";
@@ -494,6 +510,12 @@ if (cveForm && cveOutput) {
           const card = document.createElement("div");
           card.className = "cve-item";
 
+          const metaBits = [];
+          metaBits.push(`Source: ${cve.source || "N/A"}`);
+          metaBits.push(`CVSS: ${formatCvss(cve.cvss_score)}`);
+          if (cve.cwe) metaBits.push(`CWE: ${cve.cwe}`);
+          if (cve.fixed_in) metaBits.push(`Fixed in: ${cve.fixed_in}`);
+
           card.innerHTML = `
             <div class="cve-item-header">
               <div>
@@ -502,7 +524,10 @@ if (cveForm && cveOutput) {
                   ${cve.cve_id} — ${cve.title}
                 </div>
                 <div class="cve-item-meta">
-                  Tags: ${(cve.tags || []).join(", ")}${cve.fixed_in ? ` • Fixed in: ${cve.fixed_in}` : ""}
+                  ${metaBits.join(" • ")}
+                </div>
+                <div class="cve-item-meta">
+                  Tags: ${(cve.tags || []).join(", ")}
                 </div>
               </div>
               <div class="cve-item-meta">Click</div>
@@ -510,8 +535,23 @@ if (cveForm && cveOutput) {
 
             <div class="cve-item-body">
               <div><strong>Description:</strong> ${cve.description}</div>
-              ${cve.workaround ? `<div style="margin-top:8px;"><strong>Workaround:</strong> ${cve.workaround}</div>` : ""}
-              ${cve.advisory_url ? `<div style="margin-top:8px;"><strong>Advisory:</strong> ${cve.advisory_url}</div>` : ""}
+              ${
+                cve.workaround
+                  ? `<div style="margin-top:8px;"><strong>Workaround:</strong> ${cve.workaround}</div>`
+                  : ""
+              }
+              ${
+                cve.advisory_url
+                  ? `<div style="margin-top:8px;"><strong>Advisory:</strong> ${cve.advisory_url}</div>`
+                  : ""
+              }
+              ${
+                cve.references && cve.references.length > 0
+                  ? `<div style="margin-top:8px;"><strong>References:</strong> ${cve.references.join(
+                      " | "
+                    )}</div>`
+                  : ""
+              }
             </div>
           `;
 
@@ -525,13 +565,19 @@ if (cveForm && cveOutput) {
         });
       }
 
-      // Security posture summary
+      // Security posture summary (with Max CVSS)
       if (cveSummary) {
         const s = data.summary || {};
         const critical = s.critical || 0;
         const high = s.high || 0;
         const medium = s.medium || 0;
         const low = s.low || 0;
+
+        const scores = (data.matched || [])
+          .map((x) => Number(x.cvss_score))
+          .filter((n) => !Number.isNaN(n));
+
+        const maxCvss = scores.length ? Math.max(...scores) : null;
 
         cveSummary.innerHTML = `
           <h3>Security posture</h3>
@@ -545,6 +591,7 @@ if (cveForm && cveOutput) {
             </span>
           </div>
           <div class="summary-row"><span>Counts</span><span>${critical} / ${high} / ${medium} / ${low}</span></div>
+          <div class="summary-row"><span>Max CVSS</span><span>${formatCvss(maxCvss)}</span></div>
           ${
             data.recommended_upgrade
               ? `<div class="summary-upgrade">
@@ -627,7 +674,9 @@ async function fetchProfilesList() {
 }
 
 async function fetchProfile(name) {
-  const res = await fetch(`${API_BASE_URL}/profiles/load/${encodeURIComponent(name)}`);
+  const res = await fetch(
+    `${API_BASE_URL}/profiles/load/${encodeURIComponent(name)}`
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Load failed (${res.status}): ${text || "unknown error"}`);
@@ -649,9 +698,12 @@ async function saveProfile(profilePayload) {
 }
 
 async function deleteProfile(name) {
-  const res = await fetch(`${API_BASE_URL}/profiles/delete/${encodeURIComponent(name)}`, {
-    method: "DELETE",
-  });
+  const res = await fetch(
+    `${API_BASE_URL}/profiles/delete/${encodeURIComponent(name)}`,
+    {
+      method: "DELETE",
+    }
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Delete failed (${res.status}): ${text || "unknown error"}`);
@@ -781,7 +833,9 @@ async function refreshProfilesUI() {
 
     if (profilesCache.length === 0) {
       profilesSelect.innerHTML = `<option value="">(no profiles found)</option>`;
-      setProfilesStatus("No profiles found on the backend. Save one to get started.");
+      setProfilesStatus(
+        "No profiles found on the backend. Save one to get started."
+      );
       updateProfilesButtonsState();
       return;
     }
@@ -829,7 +883,8 @@ if (profilesLoadBtn) {
       applyProfileToForms(profile);
 
       if (profileNameInput) profileNameInput.value = profile.name || name;
-      if (profileDescriptionInput) profileDescriptionInput.value = profile.description || "";
+      if (profileDescriptionInput)
+        profileDescriptionInput.value = profile.description || "";
 
       setProfilesStatus(`Profile loaded: ${name}. Forms updated.`);
       setProfilesPreview(JSON.stringify(profile, null, 2));
@@ -850,7 +905,10 @@ if (profilesDeleteBtn) {
 
     if (!profilesConfirmDelete || !profilesConfirmDelete.checked) {
       setProfilesStatus("Tick the confirmation checkbox before deleting.");
-      showToast("Delete blocked", "Enable confirmation checkbox to delete a profile.");
+      showToast(
+        "Delete blocked",
+        "Enable confirmation checkbox to delete a profile."
+      );
       return;
     }
 
@@ -872,7 +930,10 @@ if (profilesDeleteBtn) {
 if (profilesSaveBtn) {
   profilesSaveBtn.addEventListener("click", async () => {
     const name = ((profileNameInput && profileNameInput.value) || "").trim();
-    const description = ((profileDescriptionInput && profileDescriptionInput.value) || "").trim();
+    const description = (
+      (profileDescriptionInput && profileDescriptionInput.value) ||
+      ""
+    ).trim();
 
     if (!name) {
       setProfilesStatus("Profile name is required.");
