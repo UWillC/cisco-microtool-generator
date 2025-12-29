@@ -3,11 +3,17 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from models.cve_model import CVEEntry
-from services.cve_sources import CVEProvider, LocalJsonProvider
+from services.cve_sources import (
+    CVEProvider,
+    LocalJsonProvider,
+    CiscoAdvisoryProvider,
+    NvdProvider,
+    TenableProvider,
+)
 
 
 # -----------------------------
-# Version parsing & comparison (v0.3)
+# Version parsing & comparison (v0.3+)
 # -----------------------------
 def _tokenize_version(v: str) -> Tuple[int, ...]:
     """
@@ -15,21 +21,16 @@ def _tokenize_version(v: str) -> Tuple[int, ...]:
       - "17.5.1" -> (17, 5, 1)
       - "17.6.3a" -> (17, 6, 3)  (suffix ignored for now)
       - "16.12" -> (16, 12, 0)
-    Notes:
-      - We intentionally keep this simple and deterministic for Cisco IOS/XE versions.
-      - If you later need suffix-aware ordering, extend here.
     """
     v = (v or "").strip()
     if not v:
         return (0,)
 
-    # Strip common suffixes (e.g. "17.6.3a", "17.6.3b", "17.6.3(1)")
     cleaned = []
     for ch in v:
         if ch.isdigit() or ch == ".":
             cleaned.append(ch)
         else:
-            # stop at first non-digit/non-dot
             break
 
     s = "".join(cleaned).strip(".")
@@ -39,15 +40,11 @@ def _tokenize_version(v: str) -> Tuple[int, ...]:
     parts = s.split(".")
     nums: List[int] = []
     for p in parts:
-        if p == "":
+        try:
+            nums.append(int(p))
+        except ValueError:
             nums.append(0)
-        else:
-            try:
-                nums.append(int(p))
-            except ValueError:
-                nums.append(0)
 
-    # Normalize length to 3 components for stable comparisons
     while len(nums) < 3:
         nums.append(0)
 
@@ -55,16 +52,9 @@ def _tokenize_version(v: str) -> Tuple[int, ...]:
 
 
 def compare_versions(a: str, b: str) -> int:
-    """
-    Return:
-      -1 if a < b
-       0 if a == b
-       1 if a > b
-    """
     ta = _tokenize_version(a)
     tb = _tokenize_version(b)
 
-    # Extend to equal length
     max_len = max(len(ta), len(tb))
     ta = ta + (0,) * (max_len - len(ta))
     tb = tb + (0,) * (max_len - len(tb))
@@ -77,27 +67,13 @@ def compare_versions(a: str, b: str) -> int:
 
 
 # -----------------------------
-# Platform normalization (v0.3)
+# Platform normalization (v0.3+)
 # -----------------------------
 def normalize_platform(p: str) -> str:
-    """
-    Normalize platform strings to improve matching stability.
-    Examples:
-      "ISR4451-X" -> "isr4451-x"
-      "Catalyst 8200" -> "catalyst 8200"
-      "IOS XE" -> "ios xe"
-    """
     return (p or "").strip().lower()
 
 
 def platform_matches(query_platform: str, cve_platforms: List[str]) -> bool:
-    """
-    v0.2 platform matching was too strict:
-      - It required exact match in cve.platforms OR special 'ios xe' handling.
-    v0.3 improves this:
-      - Exact match OR substring match (both directions), after normalization.
-      - 'ios xe' in either side is treated as a broad match.
-    """
     qp = normalize_platform(query_platform)
     if not qp:
         return False
@@ -127,23 +103,27 @@ def platform_matches(query_platform: str, cve_platforms: List[str]) -> bool:
 # -----------------------------
 @dataclass(frozen=True)
 class CVEEngineConfig:
-    engine_version: str = "0.3"
+    engine_version: str = "0.3.2"
     data_dir: str = "cve_data/ios_xe"
+    enable_external_providers: bool = False  # default OFF (safe)
 
 
 class CVEEngine:
     """
-    CVE Engine v0.3
+    CVE Engine v0.3.2
 
-    Goals:
-    - Keep Local JSON dataset as the default (fast + deterministic).
-    - Introduce provider architecture (SaaS-ready) so we can later plug:
+    v0.3.2 focus:
+    - keep Local JSON as deterministic default
+    - add provider stubs + importer skeletons for:
         * Cisco Security Advisories
         * NVD
         * Tenable
-      without rewriting the engine.
+      (currently disabled by default, and return [] safely)
 
-    For now: only LocalJsonProvider is enabled by default.
+    Enable external providers by:
+      - setting CVE_EXTERNAL_PROVIDERS=1
+      OR
+      - passing config.enable_external_providers=True
     """
 
     def __init__(
@@ -152,27 +132,46 @@ class CVEEngine:
         providers: Optional[List[CVEProvider]] = None,
     ):
         self.config = config or CVEEngineConfig()
-        self.providers = providers or [LocalJsonProvider(self.config.data_dir)]
+
+        env_flag = os.getenv("CVE_EXTERNAL_PROVIDERS", "").strip().lower()
+        enable_external = self.config.enable_external_providers or env_flag in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+
+        if providers is not None:
+            self.providers = providers
+        else:
+            base = [LocalJsonProvider(self.config.data_dir)]
+            if enable_external:
+                # Stubs: safe no-op providers for now (return empty list)
+                base.extend(
+                    [
+                        CiscoAdvisoryProvider(),
+                        NvdProvider(),
+                        TenableProvider(),
+                    ]
+                )
+            self.providers = base
+
         self.cves: List[CVEEntry] = []
 
     # -------------------------
     # Loading
     # -------------------------
     def load_all(self) -> None:
-        """
-        Load CVEs from all configured providers.
-        Providers can implement their own caching, etc.
-        """
         loaded: List[CVEEntry] = []
 
         for provider in self.providers:
             try:
                 loaded.extend(provider.load())
             except Exception as e:
-                # Don't crash the API if one provider fails
+                # Never crash API because one provider failed
                 print(f"[WARN] CVE provider failed: {provider.name} ({e})")
 
-        # Basic dedup by CVE ID (keep last occurrence)
+        # Dedup by CVE ID (keep last occurrence)
         by_id: Dict[str, CVEEntry] = {}
         for entry in loaded:
             by_id[entry.cve_id] = entry
@@ -183,17 +182,11 @@ class CVEEngine:
     # Matching
     # -------------------------
     def match(self, platform: str, version: str) -> List[CVEEntry]:
-        """
-        Return CVEs that match:
-          - platform (normalized match)
-          - affected version range (min/max inclusive)
-        """
         matched: List[CVEEntry] = []
         for cve in self.cves:
             if not platform_matches(platform, cve.platforms):
                 continue
 
-            # Version range inclusive
             if compare_versions(version, cve.affected.min) < 0:
                 continue
             if compare_versions(version, cve.affected.max) > 0:
@@ -201,7 +194,6 @@ class CVEEngine:
 
             matched.append(cve)
 
-        # Sort by severity then CVE ID for stable UI ordering
         severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
         matched.sort(
             key=lambda x: (
@@ -226,9 +218,6 @@ class CVEEngine:
     # Recommended upgrade
     # -------------------------
     def recommended_upgrade(self, matched: List[CVEEntry]) -> Optional[str]:
-        """
-        Return minimal 'fixed_in' version among critical/high issues.
-        """
         candidates: List[str] = []
         for cve in matched:
             if (cve.severity or "").lower() in ("critical", "high") and cve.fixed_in:

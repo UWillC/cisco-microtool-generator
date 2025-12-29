@@ -1,18 +1,21 @@
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
 from models.cve_model import CVEEntry
+from services.cve_importers import (
+    CiscoAdvisoryImporter,
+    NvdImporter,
+    TenableImporter,
+)
 
 
 class CVEProvider(ABC):
     """
     Provider interface (SaaS-ready).
-    Future providers:
-      - Cisco Security Advisories provider
-      - NVD provider
-      - Tenable provider
+
+    A provider is responsible for loading data from one source and returning a list of CVEEntry objects.
     """
 
     name: str = "base"
@@ -26,9 +29,8 @@ class LocalJsonProvider(CVEProvider):
     """
     Default provider: loads curated CVE JSON files from a directory.
 
-    v0.3.1:
+    v0.3.1+:
       - Ensures `source` is set (defaults to provider name).
-      - Tolerates unknown fields in JSON as long as CVEEntry schema supports them.
     """
 
     name = "local-json"
@@ -40,8 +42,7 @@ class LocalJsonProvider(CVEProvider):
         if getattr(entry, "source", None):
             return entry
 
-        # Pydantic v2 uses model_copy; v1 uses copy
-        if hasattr(entry, "model_copy"):
+        if hasattr(entry, "model_copy"):  # pydantic v2
             return entry.model_copy(update={"source": self.name})
         return entry.copy(update={"source": self.name})  # type: ignore[attr-defined]
 
@@ -60,8 +61,7 @@ class LocalJsonProvider(CVEProvider):
                     data = json.load(f)
 
                 entry = CVEEntry(**data)
-                entry = self._ensure_source(entry)
-                results.append(entry)
+                results.append(self._ensure_source(entry))
             except Exception as e:
                 print(f"[WARN] Skipping invalid CVE file: {filename} ({e})")
 
@@ -69,24 +69,60 @@ class LocalJsonProvider(CVEProvider):
 
 
 # -----------------------------
-# Future providers (stubs)
+# External providers (v0.3.2 stubs)
 # -----------------------------
-class CiscoAdvisoryProvider(CVEProvider):
+class ExternalProviderBase(CVEProvider):
+    """
+    v0.3.2: external providers are intentionally implemented as safe stubs:
+      - They never raise during normal operation
+      - They return [] until actual fetching/parsing is implemented
+    """
+
+    def __init__(self, enabled: bool = True):
+        self.enabled = enabled
+
+    def load(self) -> List[CVEEntry]:
+        if not self.enabled:
+            return []
+
+        # Stubs return empty list for now (safe).
+        print(f"[INFO] External provider enabled but not implemented: {self.name}")
+        return []
+
+
+class CiscoAdvisoryProvider(ExternalProviderBase):
+    """
+    Future:
+      - Fetch Cisco Security Advisories
+      - Parse advisory listing and map to CVEEntry (IOS XE focus)
+    """
     name = "cisco-advisories"
 
-    def load(self) -> List[CVEEntry]:
-        raise NotImplementedError("Cisco advisory provider is not implemented yet.")
+    def __init__(self, enabled: bool = True, importer: Optional[CiscoAdvisoryImporter] = None):
+        super().__init__(enabled=enabled)
+        self.importer = importer or CiscoAdvisoryImporter()
 
 
-class NvdProvider(CVEProvider):
+class NvdProvider(ExternalProviderBase):
+    """
+    Future:
+      - Query NVD API
+      - Normalize NVD records into CVEEntry
+    """
     name = "nvd"
 
-    def load(self) -> List[CVEEntry]:
-        raise NotImplementedError("NVD provider is not implemented yet.")
+    def __init__(self, enabled: bool = True, importer: Optional[NvdImporter] = None):
+        super().__init__(enabled=enabled)
+        self.importer = importer or NvdImporter()
 
 
-class TenableProvider(CVEProvider):
+class TenableProvider(ExternalProviderBase):
+    """
+    Future:
+      - Use Tenable CVE search/feed for enrichment (CVSS, references, CPE hints)
+    """
     name = "tenable"
 
-    def load(self) -> List[CVEEntry]:
-        raise NotImplementedError("Tenable provider is not implemented yet.")
+    def __init__(self, enabled: bool = True, importer: Optional[TenableImporter] = None):
+        super().__init__(enabled=enabled)
+        self.importer = importer or TenableImporter()
