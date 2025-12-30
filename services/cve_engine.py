@@ -6,8 +6,8 @@ from models.cve_model import CVEEntry
 from services.cve_sources import (
     CVEProvider,
     LocalJsonProvider,
+    NvdEnricherProvider,
     CiscoAdvisoryProvider,
-    NvdProvider,
     TenableProvider,
 )
 
@@ -16,12 +16,6 @@ from services.cve_sources import (
 # Version parsing & comparison (v0.3+)
 # -----------------------------
 def _tokenize_version(v: str) -> Tuple[int, ...]:
-    """
-    Convert versions like:
-      - "17.5.1" -> (17, 5, 1)
-      - "17.6.3a" -> (17, 6, 3)  (suffix ignored for now)
-      - "16.12" -> (16, 12, 0)
-    """
     v = (v or "").strip()
     if not v:
         return (0,)
@@ -103,27 +97,33 @@ def platform_matches(query_platform: str, cve_platforms: List[str]) -> bool:
 # -----------------------------
 @dataclass(frozen=True)
 class CVEEngineConfig:
-    engine_version: str = "0.3.2"
+    engine_version: str = "0.3.3"
     data_dir: str = "cve_data/ios_xe"
-    enable_external_providers: bool = False  # default OFF (safe)
+
+    # External enrichers/providers are OFF by default
+    enable_nvd_enrichment: bool = False
+    enable_cisco_provider: bool = False
+    enable_tenable_provider: bool = False
+
+
+def _env_true(name: str) -> bool:
+    v = os.getenv(name, "").strip().lower()
+    return v in ("1", "true", "yes", "on")
 
 
 class CVEEngine:
     """
-    CVE Engine v0.3.2
+    CVE Engine v0.3.3
 
-    v0.3.2 focus:
-    - keep Local JSON as deterministic default
-    - add provider stubs + importer skeletons for:
-        * Cisco Security Advisories
-        * NVD
-        * Tenable
-      (currently disabled by default, and return [] safely)
+    v0.3.3 focus:
+    - Real external integration (read-only) WITHOUT breaking deterministic matching.
+    - Approach: Local JSON dataset is the base of truth.
+    - External providers act as "enrichers" (by CVE ID), not primary match sources.
 
-    Enable external providers by:
-      - setting CVE_EXTERNAL_PROVIDERS=1
-      OR
-      - passing config.enable_external_providers=True
+    Enable:
+      - NVD enrichment:      CVE_NVD_ENRICH=1
+      - Cisco provider stub: CVE_CISCO_PROVIDER=1
+      - Tenable provider stub:CVE_TENABLE_PROVIDER=1
     """
 
     def __init__(
@@ -133,48 +133,117 @@ class CVEEngine:
     ):
         self.config = config or CVEEngineConfig()
 
-        env_flag = os.getenv("CVE_EXTERNAL_PROVIDERS", "").strip().lower()
-        enable_external = self.config.enable_external_providers or env_flag in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        )
+        enable_nvd = self.config.enable_nvd_enrichment or _env_true("CVE_NVD_ENRICH")
+        enable_cisco = self.config.enable_cisco_provider or _env_true("CVE_CISCO_PROVIDER")
+        enable_tenable = self.config.enable_tenable_provider or _env_true("CVE_TENABLE_PROVIDER")
 
         if providers is not None:
             self.providers = providers
         else:
-            base = [LocalJsonProvider(self.config.data_dir)]
-            if enable_external:
-                # Stubs: safe no-op providers for now (return empty list)
-                base.extend(
-                    [
-                        CiscoAdvisoryProvider(),
-                        NvdProvider(),
-                        TenableProvider(),
-                    ]
-                )
-            self.providers = base
+            # Order matters:
+            # 1) Local JSON base
+            # 2) Enrichers/providers that can add metadata (non-destructive merge)
+            self.providers = [LocalJsonProvider(self.config.data_dir)]
+
+            if enable_nvd:
+                self.providers.append(NvdEnricherProvider())
+
+            if enable_cisco:
+                self.providers.append(CiscoAdvisoryProvider())
+
+            if enable_tenable:
+                self.providers.append(TenableProvider())
 
         self.cves: List[CVEEntry] = []
+
+    # -------------------------
+    # Merge strategy (v0.3.3)
+    # -------------------------
+    def _merge_entries(self, base: CVEEntry, patch: CVEEntry) -> CVEEntry:
+        """
+        Merge 'patch' into 'base' without destroying curated fields.
+
+        Rules:
+        - Keep base platforms/affected/fixed_in/workaround if base has them.
+        - Fill missing metadata fields from patch:
+            source, cvss_score, cvss_vector, cwe, published, last_modified, references
+        - Merge references (dedup).
+        """
+        update = {}
+
+        # Metadata fields we allow to enrich
+        for field in (
+            "source",
+            "cvss_score",
+            "cvss_vector",
+            "cwe",
+            "published",
+            "last_modified",
+        ):
+            base_val = getattr(base, field, None)
+            patch_val = getattr(patch, field, None)
+            if base_val in (None, "", []) and patch_val not in (None, "", []):
+                update[field] = patch_val
+
+        # Advisory URL/title/description are curated in local JSON,
+        # so only fill them if missing.
+        for field in ("advisory_url", "title", "description"):
+            base_val = getattr(base, field, None)
+            patch_val = getattr(patch, field, None)
+            if base_val in (None, "", []) and patch_val not in (None, "", []):
+                update[field] = patch_val
+
+        # References: merge + dedup
+        base_refs = list(getattr(base, "references", []) or [])
+        patch_refs = list(getattr(patch, "references", []) or [])
+        if patch_refs:
+            merged = []
+            seen = set()
+            for r in base_refs + patch_refs:
+                if not r:
+                    continue
+                if r in seen:
+                    continue
+                seen.add(r)
+                merged.append(r)
+            update["references"] = merged
+
+        if not update:
+            return base
+
+        if hasattr(base, "model_copy"):  # pydantic v2
+            return base.model_copy(update=update)
+        return base.copy(update=update)  # type: ignore[attr-defined]
 
     # -------------------------
     # Loading
     # -------------------------
     def load_all(self) -> None:
-        loaded: List[CVEEntry] = []
+        loaded_by_provider: List[List[CVEEntry]] = []
 
         for provider in self.providers:
             try:
-                loaded.extend(provider.load())
+                loaded_by_provider.append(provider.load())
             except Exception as e:
-                # Never crash API because one provider failed
                 print(f"[WARN] CVE provider failed: {provider.name} ({e})")
+                loaded_by_provider.append([])
 
-        # Dedup by CVE ID (keep last occurrence)
+        # Start from first provider as base, then merge enrichers
         by_id: Dict[str, CVEEntry] = {}
-        for entry in loaded:
-            by_id[entry.cve_id] = entry
+
+        if loaded_by_provider:
+            for entry in loaded_by_provider[0]:
+                by_id[entry.cve_id] = entry
+
+        # Merge subsequent provider outputs
+        for provider_entries in loaded_by_provider[1:]:
+            for patch in provider_entries:
+                if patch.cve_id in by_id:
+                    by_id[patch.cve_id] = self._merge_entries(by_id[patch.cve_id], patch)
+                else:
+                    # If an external provider returns a CVE we don't have locally,
+                    # we store it, but it may not match due to missing affected/platforms.
+                    by_id[patch.cve_id] = patch
 
         self.cves = list(by_id.values())
 

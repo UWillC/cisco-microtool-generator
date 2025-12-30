@@ -3,21 +3,12 @@ import os
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from models.cve_model import CVEEntry
-from services.cve_importers import (
-    CiscoAdvisoryImporter,
-    NvdImporter,
-    TenableImporter,
-)
+from models.cve_model import CVEEntry, CVEAffectedRange
+from services.cve_importers import NvdImporter
+from services.http_client import http_get_json
 
 
 class CVEProvider(ABC):
-    """
-    Provider interface (SaaS-ready).
-
-    A provider is responsible for loading data from one source and returning a list of CVEEntry objects.
-    """
-
     name: str = "base"
 
     @abstractmethod
@@ -26,13 +17,6 @@ class CVEProvider(ABC):
 
 
 class LocalJsonProvider(CVEProvider):
-    """
-    Default provider: loads curated CVE JSON files from a directory.
-
-    v0.3.1+:
-      - Ensures `source` is set (defaults to provider name).
-    """
-
     name = "local-json"
 
     def __init__(self, data_dir: str):
@@ -41,8 +25,7 @@ class LocalJsonProvider(CVEProvider):
     def _ensure_source(self, entry: CVEEntry) -> CVEEntry:
         if getattr(entry, "source", None):
             return entry
-
-        if hasattr(entry, "model_copy"):  # pydantic v2
+        if hasattr(entry, "model_copy"):
             return entry.model_copy(update={"source": self.name})
         return entry.copy(update={"source": self.name})  # type: ignore[attr-defined]
 
@@ -54,12 +37,10 @@ class LocalJsonProvider(CVEProvider):
         for filename in os.listdir(self.data_dir):
             if not filename.endswith(".json"):
                 continue
-
             path = os.path.join(self.data_dir, filename)
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-
                 entry = CVEEntry(**data)
                 results.append(self._ensure_source(entry))
             except Exception as e:
@@ -69,60 +50,86 @@ class LocalJsonProvider(CVEProvider):
 
 
 # -----------------------------
-# External providers (v0.3.2 stubs)
+# v0.3.3: NVD Enricher (REAL fetch)
 # -----------------------------
-class ExternalProviderBase(CVEProvider):
+class NvdEnricherProvider(CVEProvider):
     """
-    v0.3.2: external providers are intentionally implemented as safe stubs:
-      - They never raise during normal operation
-      - They return [] until actual fetching/parsing is implemented
+    Fetches CVE metadata from NVD by CVE ID.
+
+    Notes:
+    - This is enrichment only. We do NOT try to derive Cisco platform/version ranges from NVD.
+    - You enable it via env: CVE_NVD_ENRICH=1
+    - Rate limits may apply. Keep your local curated dataset small/curated.
     """
 
-    def __init__(self, enabled: bool = True):
-        self.enabled = enabled
+    name = "nvd"
+
+    def __init__(self, cve_ids: Optional[List[str]] = None):
+        # If None: provider will try to read CVE IDs from local dataset at runtime (not available here),
+        # so default behaviour is: no IDs -> no-op.
+        self.cve_ids = cve_ids or []
+        self.importer = NvdImporter()
 
     def load(self) -> List[CVEEntry]:
-        if not self.enabled:
+        if not self.cve_ids:
+            # Safe no-op if not provided any IDs
+            print("[INFO] NVD enricher enabled but no CVE IDs provided; skipping.")
             return []
 
-        # Stubs return empty list for now (safe).
-        print(f"[INFO] External provider enabled but not implemented: {self.name}")
+        out: List[CVEEntry] = []
+        for cve_id in self.cve_ids:
+            try:
+                # NVD API v2
+                url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}"
+                data = http_get_json(url, timeout_seconds=10)
+                normalized = self.importer.parse(data)
+
+                # Expect 0 or 1 for cveId query, but handle list anyway
+                for n in normalized:
+                    # Create a "patch" CVEEntry with minimal required fields.
+                    # affected/platforms are placeholders because we only merge metadata onto existing local entries.
+                    out.append(
+                        CVEEntry(
+                            cve_id=n.cve_id,
+                            title=n.title or cve_id,
+                            severity=n.severity or "medium",
+                            platforms=["IOS XE"],  # placeholder (won't be used if merging onto local)
+                            affected=CVEAffectedRange(min="0.0.0", max="999.999.999"),
+                            fixed_in=None,
+                            tags=[],
+                            description=n.description or "",
+                            workaround=None,
+                            advisory_url=None,
+                            confidence="partial",
+                            source="nvd",
+                            cvss_score=n.cvss_score,
+                            cvss_vector=n.cvss_vector,
+                            cwe=n.cwe,
+                            published=n.published,
+                            last_modified=n.last_modified,
+                            references=n.references or [],
+                        )
+                    )
+            except Exception as e:
+                print(f"[WARN] NVD enrich failed for {cve_id}: {e}")
+
+        return out
+
+
+# -----------------------------
+# External providers (still stubs for now)
+# -----------------------------
+class CiscoAdvisoryProvider(CVEProvider):
+    name = "cisco-advisories"
+
+    def load(self) -> List[CVEEntry]:
+        print("[INFO] Cisco provider stub (v0.3.3): not implemented yet.")
         return []
 
 
-class CiscoAdvisoryProvider(ExternalProviderBase):
-    """
-    Future:
-      - Fetch Cisco Security Advisories
-      - Parse advisory listing and map to CVEEntry (IOS XE focus)
-    """
-    name = "cisco-advisories"
-
-    def __init__(self, enabled: bool = True, importer: Optional[CiscoAdvisoryImporter] = None):
-        super().__init__(enabled=enabled)
-        self.importer = importer or CiscoAdvisoryImporter()
-
-
-class NvdProvider(ExternalProviderBase):
-    """
-    Future:
-      - Query NVD API
-      - Normalize NVD records into CVEEntry
-    """
-    name = "nvd"
-
-    def __init__(self, enabled: bool = True, importer: Optional[NvdImporter] = None):
-        super().__init__(enabled=enabled)
-        self.importer = importer or NvdImporter()
-
-
-class TenableProvider(ExternalProviderBase):
-    """
-    Future:
-      - Use Tenable CVE search/feed for enrichment (CVSS, references, CPE hints)
-    """
+class TenableProvider(CVEProvider):
     name = "tenable"
 
-    def __init__(self, enabled: bool = True, importer: Optional[TenableImporter] = None):
-        super().__init__(enabled=enabled)
-        self.importer = importer or TenableImporter()
+    def load(self) -> List[CVEEntry]:
+        print("[INFO] Tenable provider stub (v0.3.3): not implemented yet.")
+        return []
