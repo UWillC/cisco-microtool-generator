@@ -4,6 +4,61 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.3.3] – 2025-12-30
+
+### Added
+
+- CVE Engine v0.3.3:
+  - Real NVD API v2.0 integration (read-only enrichment).
+  - Safe merge strategy: local JSON is source of truth, NVD adds metadata.
+  - New fields: `cvss_score`, `cvss_vector`, `cwe`, `published`, `last_modified`, `references`.
+  - Environment variable `CVE_NVD_ENRICH=1` to enable NVD enrichment.
+- HTTP client with proper User-Agent header.
+- NVD response parser (`cve_importers.py`).
+
+### Notes
+
+- NVD enrichment is opt-in and rate-limit aware.
+- Cisco and Tenable providers remain stubs for future implementation.
+
+---
+
+## [v0.3.2] – 2025-12-28
+
+### Added
+
+- CVE Engine provider architecture:
+  - Importer skeletons for Cisco, NVD, and Tenable providers.
+  - Modular design for future external data sources.
+
+---
+
+## [v0.3.1] – 2025-12-26
+
+### Added
+
+- CVE data enrichment fields in model (`source`, `cvss_score`, `cvss_vector`, `cwe`, `references`).
+- Web UI displays enriched CVE metadata (CVSS, CWE, references).
+
+---
+
+## [v0.3.0] – 2025-12-24
+
+### Added
+
+- CVE Engine v0.3:
+  - Provider-based architecture (`CVEProvider` abstract class).
+  - `LocalJsonProvider` as primary data source.
+  - Improved version comparison and platform matching logic.
+  - Severity-based sorting of matched CVEs.
+
+### Changed
+
+- CVE Analyzer API response now includes `source` field per CVE entry.
+- Refactored `cve_engine.py` for extensibility.
+
+---
+
 ## [v0.2.1] – 2025-12-22
 
 ### Added

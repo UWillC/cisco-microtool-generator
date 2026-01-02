@@ -57,23 +57,30 @@ Cisco Micro-Tool Generator aims to solve this by providing:
 
 ---
 
-## 🔐 CVE Analyzer (v0.2)
+## 🔐 CVE Analyzer (v0.3.3)
 
-A lightweight CVE awareness engine focused on Cisco IOS XE.
+A lightweight CVE awareness engine focused on Cisco IOS XE with optional NVD enrichment.
 
 **Capabilities:**
 - Platform + software version matching
 - Severity classification (critical / high / medium / low)
 - Upgrade recommendations based on known fixed versions
 - Structured JSON output via API
+- **NEW in v0.3.3:** Real-time NVD API enrichment (opt-in via `CVE_NVD_ENRICH=1`)
+
+**Data enrichment fields:**
+- CVSS score and vector
+- CWE classification
+- Published/modified dates
+- External references
 
 **Web UI features:**
 - Text-based CVE report
-- Collapsible CVE cards
+- Collapsible CVE cards with full metadata
 - Severity badges
-- Security posture summary panel
+- Security posture summary panel (with Max CVSS)
 
-> ℹ️ CVE Analyzer currently uses a curated dataset for demonstration purposes only.
+> ℹ️ Local CVE dataset is curated for demonstration. Enable NVD enrichment for additional metadata.
 
 ---
 
@@ -206,11 +213,22 @@ are persisted across container restarts.
 
 ## 🛣 Roadmap (high level)
 
-- Profiles UX improvements (rename, duplicate, confirm modals)
-- CVE Engine v0.3 (data enrichment, external feeds)
-- Export reports (Markdown / JSON)
+**v0.3.4 (next):**
+- NVD response caching (rate limiting solution)
+- Profiles × CVE integration ("which profiles are affected?")
+- Security Score (0-100)
+
+**v0.4.0 (SaaS):**
 - Authentication & multi-user mode
-- SaaS-ready deployment (cloud)
+- Stripe billing integration
+- Cloud deployment (Railway / Render / Fly.io)
+
+**Future:**
+- Cisco PSIRT / Tenable integrations
+- PDF security reports
+- CLI tool for power users
+
+See `ROADMAP.md` for details.
 
 ---
 
