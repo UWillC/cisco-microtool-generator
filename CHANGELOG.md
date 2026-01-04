@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.3.4] – 2026-01-04
+
+### Added
+
+- NVD API response cache:
+  - File-based cache in `cache/nvd/` directory.
+  - 24-hour TTL to avoid rate limiting.
+  - Transparent caching with `[CACHE]` log messages for visibility.
+- New feature flag: `nvd_cache`.
+
+### Changed
+
+- `NvdEnricherProvider` now uses `_fetch_with_cache()` method.
+- Real CVE data in local database (CVE-2023-20198, CVE-2023-20273, CVE-2025-20188).
+
+---
+
 ## [v0.3.3] – 2025-12-30
 
 ### Added

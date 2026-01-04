@@ -6,7 +6,12 @@ from typing import Any, Dict, List, Optional
 
 from models.cve_model import CVEEntry, CVEAffectedRange
 from services.cve_importers import NvdImporter
-from services.http_client import http_get_json
+from services.http_client import (
+    http_get_json,
+    HttpClientError,
+    HttpTimeoutError,
+    HttpConnectionError,
+)
 
 # Cache configuration
 NVD_CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "cache", "nvd")
@@ -109,17 +114,28 @@ class NvdEnricherProvider(CVEProvider):
             print(f"[WARN] Failed to cache {cve_id}: {e}")
 
     def _fetch_with_cache(self, cve_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch from cache or NVD API."""
+        """Fetch from cache or NVD API with error handling."""
         # Try cache first
         cached = self._read_cache(cve_id)
         if cached is not None:
             return cached
         # Fetch from NVD
         url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}"
-        data = http_get_json(url, timeout_seconds=10)
-        # Cache the response
-        self._write_cache(cve_id, data)
-        return data
+        try:
+            print(f"[NVD] Fetching {cve_id} from NVD API...")
+            data = http_get_json(url, timeout_seconds=10)
+            # Cache the response
+            self._write_cache(cve_id, data)
+            return data
+        except HttpTimeoutError:
+            print(f"[ERROR] NVD API timeout for {cve_id} - using local data only")
+            return None
+        except HttpConnectionError as e:
+            print(f"[ERROR] NVD API connection failed for {cve_id}: {e}")
+            return None
+        except HttpClientError as e:
+            print(f"[ERROR] NVD API error for {cve_id}: {e}")
+            return None
 
     def load(self) -> List[CVEEntry]:
         if not self.cve_ids:
