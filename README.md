@@ -1,5 +1,9 @@
 # Cisco Micro-Tool Generator
 
+![Version](https://img.shields.io/badge/version-0.3.4-blue)
+![Python](https://img.shields.io/badge/python-3.10+-green)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
 A **micro-SaaS–oriented backend + Web UI** for generating **secure Cisco IOS / IOS XE configurations**
 and performing **lightweight security analysis** (CVE awareness).
 
@@ -57,7 +61,7 @@ Cisco Micro-Tool Generator aims to solve this by providing:
 
 ---
 
-## 🔐 CVE Analyzer (v0.3.3)
+## 🔐 CVE Analyzer (v0.3.4)
 
 A lightweight CVE awareness engine focused on Cisco IOS XE with optional NVD enrichment.
 
@@ -66,7 +70,12 @@ A lightweight CVE awareness engine focused on Cisco IOS XE with optional NVD enr
 - Severity classification (critical / high / medium / low)
 - Upgrade recommendations based on known fixed versions
 - Structured JSON output via API
-- **NEW in v0.3.3:** Real-time NVD API enrichment (opt-in via `CVE_NVD_ENRICH=1`)
+- Real-time NVD API enrichment (opt-in via `CVE_NVD_ENRICH=1`)
+
+**v0.3.4 improvements:**
+- **File-based cache** — NVD responses cached for 24h (eliminates rate limiting)
+- **Graceful error handling** — NVD failures don't break local CVE lookup
+- **Real CVE data** — CVE-2023-20198, CVE-2023-20273, CVE-2025-20188 (validated)
 
 **Data enrichment fields:**
 - CVSS score and vector
@@ -80,7 +89,7 @@ A lightweight CVE awareness engine focused on Cisco IOS XE with optional NVD enr
 - Severity badges
 - Security posture summary panel (with Max CVSS)
 
-> ℹ️ Local CVE dataset is curated for demonstration. Enable NVD enrichment for additional metadata.
+> ℹ️ Local CVE dataset includes real Cisco IOS XE vulnerabilities. Enable NVD enrichment for additional metadata.
 
 ---
 
@@ -131,30 +140,34 @@ The Web UI provides a clean, distraction-free interface for daily use.
 ```
 cisco-microtool-generator/
 ├── api/
-│   ├── main.py
-│   ├── routers/
-│   │   ├── snmpv3.py
-│   │   ├── ntp.py
-│   │   ├── aaa.py
-│   │   ├── golden_config.py
-│   │   ├── cve.py
-│   │   └── profiles.py
-│   ├── services/
-│   │   ├── cve_engine.py
-│   │   ├── profile_service.py
-│   │   └── utils.py
-│   └── models/
-│       ├── cve_model.py
-│       ├── profile_model.py
-│       └── meta.py
+│   ├── main.py              # FastAPI app, CORS, routers
+│   └── routers/
+│       ├── snmpv3.py        # POST /generate/snmpv3
+│       ├── ntp.py           # POST /generate/ntp
+│       ├── aaa.py           # POST /generate/aaa
+│       ├── golden_config.py # POST /generate/golden-config
+│       ├── cve.py           # POST /analyze/cve, GET /analyze/cve/{id}
+│       └── profiles.py      # /profiles/* endpoints
+├── services/                # Business logic layer
+│   ├── cve_engine.py        # CVE matching engine
+│   ├── cve_sources.py       # Providers (Local, NVD, Cisco, Tenable)
+│   ├── http_client.py       # HTTP client + error classes
+│   └── profile_service.py   # Profile CRUD
+├── models/                  # Pydantic v2 models
+│   ├── cve_model.py
+│   ├── profile_model.py
+│   └── meta.py
+├── cache/
+│   └── nvd/                 # NVD API response cache (24h TTL)
 ├── cve_data/
-│   └── ios_xe/
-├── profiles/
+│   └── ios_xe/              # Local CVE database (JSON)
+├── profiles/                # Saved device profiles
 ├── web/
-│   ├── index.html
-│   ├── app.js
+│   ├── index.html           # SPA entry
+│   ├── app.js               # Frontend logic
 │   └── style.css
 ├── Dockerfile
+├── .gitignore
 └── README.md
 ```
 
@@ -213,10 +226,14 @@ are persisted across container restarts.
 
 ## 🛣 Roadmap (high level)
 
-**v0.3.4 (next):**
-- NVD response caching (rate limiting solution)
+**v0.3.4 (current):** ✅
+- NVD response caching (24h TTL)
+- Graceful error handling
+- Real CVE data (validated)
+
+**v0.3.5 (next):**
 - Profiles × CVE integration ("which profiles are affected?")
-- Security Score (0-100)
+- Security Score (0-100 per profile)
 
 **v0.4.0 (SaaS):**
 - Authentication & multi-user mode
@@ -228,7 +245,7 @@ are persisted across container restarts.
 - PDF security reports
 - CLI tool for power users
 
-See `ROADMAP.md` for details.
+See `CHANGELOG.md` for version history.
 
 ---
 
