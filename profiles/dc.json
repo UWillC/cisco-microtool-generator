@@ -1,6 +1,8 @@
 {
   "name": "dc",
   "description": "Default dc environment profile",
+  "platform": "Nexus 9000",
+  "version": "10.2.3",
   "snmp": {
     "host": "172.16.0.10",
     "user": "dc-monitor",

@@ -1,6 +1,8 @@
 {
   "name": "branch",
   "description": "Default branch environment profile",
+  "platform": "Catalyst 9300",
+  "version": "17.9.4",
   "snmp": {
     "host": "192.168.0.10",
     "user": "branch-monitor",

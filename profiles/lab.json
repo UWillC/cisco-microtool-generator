@@ -1,6 +1,8 @@
 {
   "name": "lab",
   "description": "Default lab environment profile",
+  "platform": "ISR4451-X",
+  "version": "17.5.1",
   "snmp": {
     "host": "10.0.0.10",
     "user": "lab-monitor",

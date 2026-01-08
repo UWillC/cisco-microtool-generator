@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Literal, Optional
 
 
 class SNMPProfile(BaseModel):
@@ -30,6 +30,45 @@ class DeviceProfile(BaseModel):
     """Full multi-generator device profile V2"""
     name: str
     description: Optional[str] = None
+    # v0.3.5: Device info for CVE matching
+    platform: Optional[str] = None  # e.g., "ISR4451-X", "Catalyst 9300"
+    version: Optional[str] = None   # e.g., "17.5.1", "17.9.4"
     snmp: SNMPProfile = SNMPProfile()
     ntp: NTPProfile = NTPProfile()
     aaa: AAAProfile = AAAProfile()
+
+
+# -----------------------------
+# v0.3.5: Profiles × CVE schemas
+# -----------------------------
+
+VulnerabilityStatus = Literal["critical", "high", "medium", "low", "clean", "unknown"]
+
+
+class ProfileVulnerabilityResult(BaseModel):
+    """CVE check result for a single profile."""
+    profile_name: str
+    platform: Optional[str] = None
+    version: Optional[str] = None
+    status: VulnerabilityStatus = "unknown"
+    cve_count: int = 0
+    max_cvss: Optional[float] = None
+    cves: List[str] = []
+
+
+class ProfileVulnerabilitySummary(BaseModel):
+    """Summary of CVE check across all profiles."""
+    critical: int = 0
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+    clean: int = 0
+    unknown: int = 0  # profiles without platform/version
+
+
+class ProfileVulnerabilitiesResponse(BaseModel):
+    """Response for GET /profiles/vulnerabilities."""
+    timestamp: str
+    profiles_checked: int
+    summary: ProfileVulnerabilitySummary
+    results: List[ProfileVulnerabilityResult]
