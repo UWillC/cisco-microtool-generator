@@ -970,3 +970,84 @@ if (profilesSaveBtn) {
 // Initial state
 updateProfilesButtonsState();
 refreshProfilesUI();
+
+// -----------------------------
+// v0.3.5: Vulnerability Status Widget
+// -----------------------------
+const vulnRefreshBtn = document.getElementById("vuln-refresh");
+const vulnContent = document.getElementById("vuln-content");
+
+async function fetchVulnerabilities() {
+  const res = await fetch(`${API_BASE_URL}/profiles/vulnerabilities`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Vulnerabilities check failed (${res.status}): ${text || "unknown error"}`);
+  }
+  return res.json();
+}
+
+function renderVulnerabilityWidget(data) {
+  if (!vulnContent) return;
+
+  const { summary, results, profiles_checked } = data;
+
+  // Build summary badges
+  const summaryItems = [];
+  if (summary.critical > 0) summaryItems.push(`<span class="vuln-summary-item critical">Critical: ${summary.critical}</span>`);
+  if (summary.high > 0) summaryItems.push(`<span class="vuln-summary-item high">High: ${summary.high}</span>`);
+  if (summary.medium > 0) summaryItems.push(`<span class="vuln-summary-item medium">Medium: ${summary.medium}</span>`);
+  if (summary.low > 0) summaryItems.push(`<span class="vuln-summary-item low">Low: ${summary.low}</span>`);
+  if (summary.clean > 0) summaryItems.push(`<span class="vuln-summary-item clean">Clean: ${summary.clean}</span>`);
+  if (summary.unknown > 0) summaryItems.push(`<span class="vuln-summary-item unknown">Unknown: ${summary.unknown}</span>`);
+
+  // Build profile rows
+  const profileRows = results.map((r) => {
+    const meta = r.platform && r.version ? `${r.platform} • ${r.version}` : "No platform/version";
+    const cveText = r.cve_count > 0 ? `${r.cve_count} CVE${r.cve_count > 1 ? "s" : ""}` : "";
+    const maxCvss = r.max_cvss !== null ? `CVSS ${r.max_cvss.toFixed(1)}` : "";
+    const statusInfo = [cveText, maxCvss].filter(Boolean).join(" • ");
+
+    return `
+      <div class="vuln-profile-row">
+        <div class="vuln-profile-info">
+          <div class="vuln-profile-name">${r.profile_name}</div>
+          <div class="vuln-profile-meta">${meta}</div>
+        </div>
+        <div class="vuln-profile-status">
+          ${statusInfo ? `<span class="vuln-cve-count">${statusInfo}</span>` : ""}
+          <span class="vuln-status-badge ${r.status}">${r.status}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  vulnContent.innerHTML = `
+    <div class="vuln-summary">
+      ${summaryItems.join("")}
+    </div>
+    <div class="vuln-profiles-list">
+      ${profileRows}
+    </div>
+    <p class="summary-muted" style="margin-top: 10px; font-size: 0.78rem;">
+      Checked ${profiles_checked} profile(s) • ${data.timestamp}
+    </p>
+  `;
+}
+
+async function refreshVulnerabilityWidget() {
+  if (!vulnContent) return;
+
+  vulnContent.innerHTML = `<p class="summary-muted">Loading vulnerability status...</p>`;
+
+  try {
+    const data = await fetchVulnerabilities();
+    renderVulnerabilityWidget(data);
+    showToast("Vulnerabilities", `Checked ${data.profiles_checked} profiles`);
+  } catch (err) {
+    vulnContent.innerHTML = `<p class="summary-muted">Error: ${err.message}</p>`;
+  }
+}
+
+if (vulnRefreshBtn) {
+  vulnRefreshBtn.addEventListener("click", refreshVulnerabilityWidget);
+}

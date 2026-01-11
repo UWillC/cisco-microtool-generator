@@ -50,6 +50,7 @@
       <!-- SNMPv3 TAB -->
       <section id="tab-snmpv3" class="tab-content active">
         <h2>SNMPv3 Config Generator</h2>
+        <div class="generator-layout">
         <form id="snmpv3-form" class="card">
           <div class="form-row">
             <label>Mode</label>
@@ -111,11 +112,13 @@
           </div>
           <textarea id="snmpv3-output" class="output-text" readonly></textarea>
         </div>
+        </div>
       </section>
 
       <!-- NTP TAB -->
       <section id="tab-ntp" class="tab-content">
         <h2>NTP Config Generator</h2>
+        <div class="generator-layout">
         <form id="ntp-form" class="card">
           <div class="form-row">
             <label>Device</label>
@@ -176,11 +179,13 @@
           </div>
           <textarea id="ntp-output" class="output-text" readonly></textarea>
         </div>
+        </div>
       </section>
 
       <!-- AAA TAB -->
       <section id="tab-aaa" class="tab-content">
         <h2>AAA / TACACS+ Config Generator</h2>
+        <div class="generator-layout">
         <form id="aaa-form" class="card">
           <div class="form-row">
             <label>Mode</label>
@@ -256,11 +261,13 @@
           </div>
           <textarea id="aaa-output" class="output-text" readonly></textarea>
         </div>
+        </div>
       </section>
 
       <!-- GOLDEN CONFIG TAB -->
       <section id="tab-golden" class="tab-content">
         <h2>Golden Config Builder</h2>
+        <div class="generator-layout">
         <form id="golden-form" class="card">
           <div class="form-row">
             <label>Device</label>
@@ -311,6 +318,7 @@
             </div>
           </div>
           <textarea id="golden-output" class="output-text" readonly></textarea>
+        </div>
         </div>
       </section>
 
@@ -366,6 +374,17 @@
       <!-- PROFILES TAB -->
       <section id="tab-profiles" class="tab-content">
         <h2>Device Profiles (v2)</h2>
+
+        <!-- v0.3.5: Vulnerability Status Widget -->
+        <div class="vuln-widget card">
+          <div class="vuln-widget-header">
+            <h3>Vulnerability Status</h3>
+            <button id="vuln-refresh" class="btn-secondary">Refresh</button>
+          </div>
+          <div id="vuln-content" class="vuln-content">
+            <p class="summary-muted">Click Refresh to check all profiles against CVE database.</p>
+          </div>
+        </div>
 
         <div class="profiles-grid">
           <!-- Left: list + actions -->
