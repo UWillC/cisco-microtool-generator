@@ -1051,3 +1051,112 @@ async function refreshVulnerabilityWidget() {
 if (vulnRefreshBtn) {
   vulnRefreshBtn.addEventListener("click", refreshVulnerabilityWidget);
 }
+
+// -----------------------------
+// v0.4.0: Security Score Widget
+// -----------------------------
+const scoreRefreshBtn = document.getElementById("score-refresh");
+const scoreContent = document.getElementById("score-content");
+
+async function fetchSecurityScores() {
+  const res = await fetch(`${API_BASE_URL}/profiles/security-scores`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Security scores failed (${res.status}): ${text || "unknown error"}`);
+  }
+  return res.json();
+}
+
+function getScoreColor(label) {
+  const colors = {
+    "Excellent": "#22c55e",
+    "Good": "#84cc16",
+    "Fair": "#eab308",
+    "Poor": "#f97316",
+    "Critical": "#ef4444",
+  };
+  return colors[label] || "#6b7280";
+}
+
+function renderSecurityScoreWidget(data) {
+  if (!scoreContent) return;
+
+  const { summary, results, profiles_checked, average_score, lowest_score, highest_score } = data;
+
+  // Build summary badges
+  const summaryItems = [];
+  if (summary.excellent > 0) summaryItems.push(`<span class="score-summary-item excellent">Excellent: ${summary.excellent}</span>`);
+  if (summary.good > 0) summaryItems.push(`<span class="score-summary-item good">Good: ${summary.good}</span>`);
+  if (summary.fair > 0) summaryItems.push(`<span class="score-summary-item fair">Fair: ${summary.fair}</span>`);
+  if (summary.poor > 0) summaryItems.push(`<span class="score-summary-item poor">Poor: ${summary.poor}</span>`);
+  if (summary.critical > 0) summaryItems.push(`<span class="score-summary-item critical">Critical: ${summary.critical}</span>`);
+  if (summary.unknown > 0) summaryItems.push(`<span class="score-summary-item unknown">Unknown: ${summary.unknown}</span>`);
+
+  // Build profile rows
+  const profileRows = results.map((r) => {
+    const meta = r.platform && r.version ? `${r.platform} • ${r.version}` : "No platform/version";
+    const scoreDisplay = r.score !== null ? r.score : "—";
+    const labelDisplay = r.label || "Unknown";
+    const scoreColor = getScoreColor(r.label);
+
+    // CVE breakdown summary
+    let breakdownHtml = "";
+    if (r.cve_breakdown && r.cve_breakdown.length > 0) {
+      const cveItems = r.cve_breakdown.map((b) => {
+        const mods = b.modifiers_applied.length > 0 ? ` (${b.modifiers_applied.join(", ")})` : "";
+        return `<div class="score-cve-item">${b.cve_id}: -${b.final_penalty.toFixed(1)}${mods}</div>`;
+      }).join("");
+      breakdownHtml = `<div class="score-breakdown">${cveItems}</div>`;
+    }
+
+    return `
+      <div class="score-profile-row">
+        <div class="score-profile-info">
+          <div class="score-profile-name">${r.profile_name}</div>
+          <div class="score-profile-meta">${meta}</div>
+          ${breakdownHtml}
+        </div>
+        <div class="score-profile-score">
+          <div class="score-badge" style="background: ${scoreColor};">${scoreDisplay}</div>
+          <div class="score-label">${labelDisplay}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Stats line
+  const statsLine = average_score !== null
+    ? `Avg: ${average_score} • Low: ${lowest_score} • High: ${highest_score}`
+    : "No scores available";
+
+  scoreContent.innerHTML = `
+    <div class="score-stats">${statsLine}</div>
+    <div class="score-summary">
+      ${summaryItems.join("")}
+    </div>
+    <div class="score-profiles-list">
+      ${profileRows}
+    </div>
+    <p class="summary-muted" style="margin-top: 10px; font-size: 0.78rem;">
+      Scored ${profiles_checked} profile(s) • ${data.timestamp}
+    </p>
+  `;
+}
+
+async function refreshSecurityScoreWidget() {
+  if (!scoreContent) return;
+
+  scoreContent.innerHTML = `<p class="summary-muted">Calculating security scores...</p>`;
+
+  try {
+    const data = await fetchSecurityScores();
+    renderSecurityScoreWidget(data);
+    showToast("Security Scores", `Scored ${data.profiles_checked} profiles (avg: ${data.average_score || "N/A"})`);
+  } catch (err) {
+    scoreContent.innerHTML = `<p class="summary-muted">Error: ${err.message}</p>`;
+  }
+}
+
+if (scoreRefreshBtn) {
+  scoreRefreshBtn.addEventListener("click", refreshSecurityScoreWidget);
+}

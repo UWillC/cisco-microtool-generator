@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.4.0] – 2026-01-13
+
+### Added
+
+- **Security Score** — numeric security assessment (0-100) for device profiles:
+  - Algorithm: Base score 100, penalties per CVE based on severity.
+  - Severity penalties: critical (-25), high (-15), medium (-8), low (-3).
+  - Modifiers: exploited-in-wild (×1.5), patch-available (×0.7), aged >365d (×1.2).
+  - Score categories: Excellent (90-100), Good (70-89), Fair (50-69), Poor (25-49), Critical (0-24).
+- New endpoint `GET /profiles/security-scores`:
+  - Returns per-profile scores with full CVE breakdown.
+  - Aggregated stats: average, lowest, highest score.
+  - Summary counts by category.
+- **Security Score widget** in Web UI (Profiles tab):
+  - Circular score badge with color-coded label.
+  - CVE breakdown showing individual penalties and modifiers.
+  - Stats line (avg/low/high).
+  - Summary badges for score distribution.
+- New Pydantic models:
+  - `CVEScoreBreakdown`, `ProfileSecurityScore`, `SecurityScoreSummary`, `SecurityScoreResponse`.
+- Design specification: `docs/DESIGN_SECURITY_SCORE.md`.
+- New feature flag: `security_score`.
+
+### Changed
+
+- ProfileService extended with `calculate_all_security_scores()` method.
+- Helper functions: `_cve_age_days()`, `_calculate_cve_breakdown()`.
+
+---
+
 ## [v0.3.5] – 2026-01-11
 
 ### Added
