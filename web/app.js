@@ -1390,3 +1390,54 @@ document.querySelectorAll(".hints-code").forEach((codeEl) => {
     });
   });
 });
+
+// -----------------------------
+// Golden Config: Go to generator buttons
+// -----------------------------
+document.querySelectorAll(".golden-goto-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const targetTab = btn.dataset.gotoTab;
+    if (!targetTab) return;
+
+    // Find and click the corresponding tab button
+    const tabBtn = document.querySelector(`.tab-button[data-tab="${targetTab}"]`);
+    if (tabBtn) {
+      tabBtn.click();
+      showToast("Switched to", `${targetTab.toUpperCase()} Generator`);
+    }
+  });
+});
+
+// -----------------------------
+// Golden Config: Hide hints when textarea has content
+// -----------------------------
+function updateGoldenConfigHints() {
+  const configs = [
+    { textarea: "golden-snmpv3-config", hint: "golden-snmp-hint" },
+    { textarea: "golden-ntp-config", hint: "golden-ntp-hint" },
+    { textarea: "golden-aaa-config", hint: "golden-aaa-hint" },
+  ];
+
+  configs.forEach(({ textarea, hint }) => {
+    const textareaEl = document.getElementById(textarea);
+    const hintEl = document.getElementById(hint);
+    if (!textareaEl || !hintEl) return;
+
+    if (textareaEl.value.trim()) {
+      hintEl.classList.add("hidden");
+    } else {
+      hintEl.classList.remove("hidden");
+    }
+  });
+}
+
+// Listen for input changes on Golden Config textareas
+["golden-snmpv3-config", "golden-ntp-config", "golden-aaa-config"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener("input", updateGoldenConfigHints);
+  }
+});
+
+// Initial check
+updateGoldenConfigHints();

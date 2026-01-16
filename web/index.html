@@ -573,19 +573,40 @@
             </select>
           </div>
 
-          <div class="form-row">
-            <label>SNMPv3 config (optional)</label>
-            <textarea name="snmpv3_config" rows="3" placeholder="Paste existing SNMPv3 config here"></textarea>
+          <!-- SNMPv3 Section -->
+          <div class="form-row golden-config-section">
+            <div class="golden-section-header">
+              <label>SNMPv3 config</label>
+              <button type="button" class="btn-link golden-goto-btn" data-goto-tab="snmpv3">Go to SNMPv3 Generator</button>
+            </div>
+            <div class="golden-section-hint" id="golden-snmp-hint">
+              <span class="hint-icon">→</span> Not configured. Use the SNMPv3 Generator to create a config, then paste it here.
+            </div>
+            <textarea name="snmpv3_config" id="golden-snmpv3-config" rows="3" placeholder="Paste SNMPv3 config here (or use generator above)"></textarea>
           </div>
 
-          <div class="form-row">
-            <label>NTP config (optional)</label>
-            <textarea name="ntp_config" rows="3" placeholder="Paste existing NTP config here"></textarea>
+          <!-- NTP Section -->
+          <div class="form-row golden-config-section">
+            <div class="golden-section-header">
+              <label>NTP config</label>
+              <button type="button" class="btn-link golden-goto-btn" data-goto-tab="ntp">Go to NTP Generator</button>
+            </div>
+            <div class="golden-section-hint" id="golden-ntp-hint">
+              <span class="hint-icon">→</span> Not configured. Use the NTP Generator to create a config, then paste it here.
+            </div>
+            <textarea name="ntp_config" id="golden-ntp-config" rows="3" placeholder="Paste NTP config here (or use generator above)"></textarea>
           </div>
 
-          <div class="form-row">
-            <label>AAA config (optional)</label>
-            <textarea name="aaa_config" rows="3" placeholder="Paste existing AAA config here"></textarea>
+          <!-- AAA Section -->
+          <div class="form-row golden-config-section">
+            <div class="golden-section-header">
+              <label>AAA config</label>
+              <button type="button" class="btn-link golden-goto-btn" data-goto-tab="aaa">Go to AAA Generator</button>
+            </div>
+            <div class="golden-section-hint" id="golden-aaa-hint">
+              <span class="hint-icon">→</span> Not configured. Use the AAA Generator to create a config, then paste it here.
+            </div>
+            <textarea name="aaa_config" id="golden-aaa-config" rows="3" placeholder="Paste AAA config here (or use generator above)"></textarea>
           </div>
 
           <div class="form-row">
