@@ -291,6 +291,10 @@ if (snmpForm && snmpOutput) {
     try {
       const data = await postJSON("/generate/snmpv3", payload);
       snmpOutput.value = data.config || "";
+      // Store last generated config for Golden Config integration
+      if (data.config) {
+        localStorage.setItem("lastGeneratedSnmpv3", data.config);
+      }
     } catch (err) {
       snmpOutput.value = `Error: ${err.message}`;
     }
@@ -373,6 +377,10 @@ if (ntpForm && ntpOutput) {
     try {
       const data = await postJSON("/generate/ntp", payload);
       ntpOutput.value = data.config || "";
+      // Store last generated config for Golden Config integration
+      if (data.config) {
+        localStorage.setItem("lastGeneratedNtp", data.config);
+      }
     } catch (err) {
       ntpOutput.value = `Error: ${err.message}`;
     }
@@ -412,6 +420,10 @@ if (aaaForm && aaaOutput) {
     try {
       const data = await postJSON("/generate/aaa", payload);
       aaaOutput.value = data.config || "";
+      // Store last generated config for Golden Config integration
+      if (data.config) {
+        localStorage.setItem("lastGeneratedAaa", data.config);
+      }
     } catch (err) {
       aaaOutput.value = `Error: ${err.message}`;
     }
@@ -1405,6 +1417,40 @@ document.querySelectorAll(".golden-goto-btn").forEach((btn) => {
       tabBtn.click();
       showToast("Switched to", `${targetTab.toUpperCase()} Generator`);
     }
+  });
+});
+
+// -----------------------------
+// Golden Config: Insert from generator buttons
+// -----------------------------
+document.querySelectorAll(".golden-insert-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const sourceKey = btn.dataset.insertSource;
+    const targetId = btn.dataset.insertTarget;
+
+    if (!sourceKey || !targetId) return;
+
+    const storedConfig = localStorage.getItem(sourceKey);
+    const targetTextarea = document.getElementById(targetId);
+
+    if (!targetTextarea) return;
+
+    if (!storedConfig) {
+      // No config generated yet
+      const generatorName = sourceKey.replace("lastGenerated", "").toUpperCase();
+      showToast("No config found", `Generate a ${generatorName} config first`);
+      return;
+    }
+
+    // Insert the config
+    targetTextarea.value = storedConfig;
+
+    // Trigger input event to update hints
+    targetTextarea.dispatchEvent(new Event("input"));
+
+    // Visual feedback
+    const configType = sourceKey.replace("lastGenerated", "");
+    showToast("Config inserted", `${configType} config added`);
   });
 });
 

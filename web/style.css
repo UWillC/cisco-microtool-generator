@@ -1173,6 +1173,36 @@ textarea:focus {
   color: var(--muted);
 }
 
+.golden-section-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-insert {
+  background: linear-gradient(135deg, #059669, #10b981);
+  border: none;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 999px;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.btn-insert:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-insert:disabled {
+  background: rgba(148, 163, 184, 0.3);
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
+}
+
 .btn-link {
   background: none;
   border: none;
