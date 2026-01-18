@@ -1,7 +1,12 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
+
+# Import generator functions from other routers
+from api.routers.snmpv3 import generate_snmpv3_cli, generate_snmpv3_oneline, generate_snmpv3_template
+from api.routers.ntp import generate_ntp_cli, generate_ntp_oneline, generate_ntp_template
+from api.routers.aaa import generate_aaa_local_only, generate_aaa_tacacs, generate_aaa_template, to_oneline as aaa_to_oneline, AAARequest
 
 router = APIRouter()
 
@@ -15,7 +20,115 @@ class GoldenConfigRequest(BaseModel):
     snmpv3_config: Optional[str] = None
     ntp_config: Optional[str] = None
     aaa_config: Optional[str] = None
-    output_format: str = "cli"   # cli | oneline
+    # Payloads for re-generation (Phase C)
+    snmpv3_payload: Optional[Dict[str, Any]] = None
+    ntp_payload: Optional[Dict[str, Any]] = None
+    aaa_payload: Optional[Dict[str, Any]] = None
+    output_format: str = "cli"   # cli | oneline | template
+
+
+# --------------------------------------------------------------------
+# PAYLOAD GENERATORS (re-generate from saved payloads)
+# --------------------------------------------------------------------
+def generate_snmpv3_from_payload(payload: Dict[str, Any], output_format: str) -> str:
+    """Generate SNMPv3 config from payload in the specified format"""
+    if output_format == "template":
+        return generate_snmpv3_template(
+            user=payload.get("user", ""),
+            group=payload.get("group", ""),
+            mode=payload.get("mode", "secure-default"),
+            host=payload.get("host", ""),
+            auth_pass=payload.get("auth_password", ""),
+            priv_pass=payload.get("priv_password", ""),
+            device=payload.get("device", "Cisco IOS XE"),
+            access_mode=payload.get("access_mode", "read-only"),
+            use_acl=payload.get("use_acl", False),
+            acl_hosts=payload.get("acl_hosts"),
+            source_interface=payload.get("source_interface"),
+            contact=payload.get("contact"),
+            location=payload.get("location"),
+        )
+    else:
+        cli = generate_snmpv3_cli(
+            user=payload.get("user", ""),
+            group=payload.get("group", ""),
+            mode=payload.get("mode", "secure-default"),
+            host=payload.get("host", ""),
+            auth_pass=payload.get("auth_password", ""),
+            priv_pass=payload.get("priv_password", ""),
+            access_mode=payload.get("access_mode", "read-only"),
+            use_acl=payload.get("use_acl", False),
+            acl_hosts=payload.get("acl_hosts"),
+            source_interface=payload.get("source_interface"),
+            contact=payload.get("contact"),
+            location=payload.get("location"),
+        )
+        if output_format == "oneline":
+            return generate_snmpv3_oneline(cli)
+        return cli
+
+
+def generate_ntp_from_payload(payload: Dict[str, Any], output_format: str) -> str:
+    """Generate NTP config from payload in the specified format"""
+    # Build NTPRequest-like object for template generator
+    class NTPPayload:
+        def __init__(self, p):
+            self.device = p.get("device", "Cisco IOS XE")
+            self.network_tier = p.get("network_tier", "ACCESS")
+            self.timezone = p.get("timezone", "UTC")
+            self.primary_server = p.get("primary_server", "")
+            self.secondary_server = p.get("secondary_server")
+            self.tertiary_server = p.get("tertiary_server")
+            self.source_interface = p.get("source_interface")
+            self.use_auth = p.get("use_auth", False)
+            self.auth_algorithm = p.get("auth_algorithm", "sha1")
+            self.key_id = p.get("key_id")
+            self.key_value = p.get("key_value")
+            self.use_logging = p.get("use_logging", True)
+            self.update_calendar = p.get("update_calendar", False)
+            self.use_access_control = p.get("use_access_control", False)
+            self.acl_peer_hosts = p.get("acl_peer_hosts")
+            self.acl_serve_network = p.get("acl_serve_network")
+            self.acl_serve_wildcard = p.get("acl_serve_wildcard")
+
+    req = NTPPayload(payload)
+
+    if output_format == "template":
+        return generate_ntp_template(req)
+    else:
+        cli = generate_ntp_cli(req)
+        if output_format == "oneline":
+            return generate_ntp_oneline(cli)
+        return cli
+
+
+def generate_aaa_from_payload(payload: Dict[str, Any], output_format: str) -> str:
+    """Generate AAA config from payload in the specified format"""
+    # Build AAARequest object
+    req = AAARequest(
+        device=payload.get("device", "Cisco IOS XE"),
+        mode=payload.get("mode", "tacacs"),
+        enable_secret=payload.get("enable_secret"),
+        tacacs1_name=payload.get("tacacs1_name"),
+        tacacs1_ip=payload.get("tacacs1_ip"),
+        tacacs1_key=payload.get("tacacs1_key"),
+        tacacs2_name=payload.get("tacacs2_name"),
+        tacacs2_ip=payload.get("tacacs2_ip"),
+        tacacs2_key=payload.get("tacacs2_key"),
+        source_interface=payload.get("source_interface"),
+        output_format=output_format,
+    )
+
+    if output_format == "template":
+        return generate_aaa_template(req)
+    else:
+        if req.mode == "local-only":
+            cli = generate_aaa_local_only(enable_secret=req.enable_secret)
+        else:
+            cli = generate_aaa_tacacs(req)
+        if output_format == "oneline":
+            return aaa_to_oneline(cli)
+        return cli
 
 
 # --------------------------------------------------------------------
@@ -74,6 +187,26 @@ def generate_golden_template(req: GoldenConfigRequest) -> str:
     """Generate YAML template for automation tools (Ansible, Netmiko, etc.)"""
     now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
+    # Generate configs from payloads if available
+    snmpv3_cfg = None
+    ntp_cfg = None
+    aaa_cfg = None
+
+    if req.snmpv3_payload:
+        snmpv3_cfg = generate_snmpv3_from_payload(req.snmpv3_payload, "template")
+    elif req.snmpv3_config:
+        snmpv3_cfg = req.snmpv3_config
+
+    if req.ntp_payload:
+        ntp_cfg = generate_ntp_from_payload(req.ntp_payload, "template")
+    elif req.ntp_config:
+        ntp_cfg = req.ntp_config
+
+    if req.aaa_payload:
+        aaa_cfg = generate_aaa_from_payload(req.aaa_payload, "template")
+    elif req.aaa_config:
+        aaa_cfg = req.aaa_config
+
     yaml = f"""# Golden Config YAML generated by NetDevOps Micro-Tools
 # Mode: {req.mode}
 # Date: {now}
@@ -85,19 +218,19 @@ golden_config:
 
   sections:
     snmpv3:
-      enabled: {str(bool(req.snmpv3_config)).lower()}
+      enabled: {str(bool(snmpv3_cfg)).lower()}
       config: |
-{_indent_multiline(req.snmpv3_config, 8) if req.snmpv3_config else "        # Not configured"}
+{_indent_multiline(snmpv3_cfg, 8) if snmpv3_cfg else "        # Not configured"}
 
     ntp:
-      enabled: {str(bool(req.ntp_config)).lower()}
+      enabled: {str(bool(ntp_cfg)).lower()}
       config: |
-{_indent_multiline(req.ntp_config, 8) if req.ntp_config else "        # Not configured"}
+{_indent_multiline(ntp_cfg, 8) if ntp_cfg else "        # Not configured"}
 
     aaa:
-      enabled: {str(bool(req.aaa_config)).lower()}
+      enabled: {str(bool(aaa_cfg)).lower()}
       config: |
-{_indent_multiline(req.aaa_config, 8) if req.aaa_config else "        # Not configured"}
+{_indent_multiline(aaa_cfg, 8) if aaa_cfg else "        # Not configured"}
 
   baseline:
     banner:
@@ -137,14 +270,25 @@ def _indent_multiline(text: str, spaces: int) -> str:
 def assemble_golden(req: GoldenConfigRequest):
     sections = []
 
-    # Provided configs
-    if req.snmpv3_config:
+    # SNMPv3: payload takes priority over config string
+    if req.snmpv3_payload:
+        snmpv3_cfg = generate_snmpv3_from_payload(req.snmpv3_payload, req.output_format)
+        sections.append(f"! SNMPv3\n{snmpv3_cfg}")
+    elif req.snmpv3_config:
         sections.append(f"! SNMPv3\n{req.snmpv3_config}")
 
-    if req.ntp_config:
+    # NTP: payload takes priority over config string
+    if req.ntp_payload:
+        ntp_cfg = generate_ntp_from_payload(req.ntp_payload, req.output_format)
+        sections.append(f"! NTP\n{ntp_cfg}")
+    elif req.ntp_config:
         sections.append(f"! NTP\n{req.ntp_config}")
 
-    if req.aaa_config:
+    # AAA: payload takes priority over config string
+    if req.aaa_payload:
+        aaa_cfg = generate_aaa_from_payload(req.aaa_payload, req.output_format)
+        sections.append(f"! AAA\n{aaa_cfg}")
+    elif req.aaa_config:
         sections.append(f"! AAA\n{req.aaa_config}")
 
     # Built-in sections
@@ -154,7 +298,8 @@ def assemble_golden(req: GoldenConfigRequest):
 
     final = "\n\n".join(sections)
 
-    if req.output_format == "oneline":
+    # For oneline, only convert built-in sections (payloads already in correct format)
+    if req.output_format == "oneline" and not (req.snmpv3_payload or req.ntp_payload or req.aaa_payload):
         lines = []
         for line in final.splitlines():
             line = line.strip()

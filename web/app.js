@@ -17,6 +17,11 @@ tabButtons.forEach((btn) => {
     btn.classList.add("active");
     const section = document.getElementById(`tab-${tab}`);
     if (section) section.classList.add("active");
+
+    // Update Golden Config payload status when switching to that tab
+    if (tab === "golden-config" && typeof updateGoldenPayloadStatus === "function") {
+      updateGoldenPayloadStatus();
+    }
   });
 });
 
@@ -319,6 +324,14 @@ if (snmpForm && snmpOutput) {
       // Store last generated config for Golden Config integration
       if (data.config) {
         localStorage.setItem("lastGeneratedSnmpv3", data.config);
+        // Store payload (without output_format) for Golden Config refactor
+        const payloadForGolden = { ...payload };
+        delete payloadForGolden.output_format;
+        localStorage.setItem("lastPayloadSnmpv3", JSON.stringify(payloadForGolden));
+        // Update Golden Config status indicators
+        if (typeof updateGoldenPayloadStatus === "function") {
+          updateGoldenPayloadStatus();
+        }
       }
     } catch (err) {
       snmpOutput.value = `Error: ${err.message}`;
@@ -405,6 +418,14 @@ if (ntpForm && ntpOutput) {
       // Store last generated config for Golden Config integration
       if (data.config) {
         localStorage.setItem("lastGeneratedNtp", data.config);
+        // Store payload (without output_format) for Golden Config refactor
+        const payloadForGolden = { ...payload };
+        delete payloadForGolden.output_format;
+        localStorage.setItem("lastPayloadNtp", JSON.stringify(payloadForGolden));
+        // Update Golden Config status indicators
+        if (typeof updateGoldenPayloadStatus === "function") {
+          updateGoldenPayloadStatus();
+        }
       }
     } catch (err) {
       ntpOutput.value = `Error: ${err.message}`;
@@ -448,6 +469,14 @@ if (aaaForm && aaaOutput) {
       // Store last generated config for Golden Config integration
       if (data.config) {
         localStorage.setItem("lastGeneratedAaa", data.config);
+        // Store payload (without output_format) for Golden Config refactor
+        const payloadForGolden = { ...payload };
+        delete payloadForGolden.output_format;
+        localStorage.setItem("lastPayloadAaa", JSON.stringify(payloadForGolden));
+        // Update Golden Config status indicators
+        if (typeof updateGoldenPayloadStatus === "function") {
+          updateGoldenPayloadStatus();
+        }
       }
     } catch (err) {
       aaaOutput.value = `Error: ${err.message}`;
@@ -461,20 +490,82 @@ if (aaaForm && aaaOutput) {
 const goldenForm = document.getElementById("golden-form");
 const goldenOutput = document.getElementById("golden-output");
 
+// Check payload availability and update status indicators
+function updateGoldenPayloadStatus() {
+  const configs = [
+    { key: "lastPayloadSnmpv3", statusId: "snmpv3-payload-status", checkboxId: "golden-use-snmpv3" },
+    { key: "lastPayloadNtp", statusId: "ntp-payload-status", checkboxId: "golden-use-ntp" },
+    { key: "lastPayloadAaa", statusId: "aaa-payload-status", checkboxId: "golden-use-aaa" },
+  ];
+
+  configs.forEach(({ key, statusId, checkboxId }) => {
+    const statusEl = document.getElementById(statusId);
+    const checkboxEl = document.getElementById(checkboxId);
+    const payload = localStorage.getItem(key);
+
+    if (statusEl) {
+      if (payload) {
+        statusEl.textContent = "✓ Available";
+        statusEl.classList.add("available");
+        statusEl.classList.remove("not-available");
+      } else {
+        statusEl.textContent = "✗ Not saved";
+        statusEl.classList.add("not-available");
+        statusEl.classList.remove("available");
+      }
+    }
+
+    // Auto-check if payload is available
+    if (checkboxEl && payload) {
+      checkboxEl.checked = true;
+    }
+  });
+}
+
 if (goldenForm && goldenOutput) {
   loadFormState("golden-form", goldenForm);
+  updateGoldenPayloadStatus();
 
   goldenForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     goldenOutput.value = "Generating Golden Config...";
 
     const formData = new FormData(goldenForm);
+
+    // Check if "Use saved config" checkboxes are checked
+    const useSnmpv3 = document.getElementById("golden-use-snmpv3")?.checked;
+    const useNtp = document.getElementById("golden-use-ntp")?.checked;
+    const useAaa = document.getElementById("golden-use-aaa")?.checked;
+
+    // Get payloads from localStorage if checkbox is checked
+    let snmpv3Payload = null;
+    let ntpPayload = null;
+    let aaaPayload = null;
+
+    if (useSnmpv3) {
+      const stored = localStorage.getItem("lastPayloadSnmpv3");
+      if (stored) snmpv3Payload = JSON.parse(stored);
+    }
+    if (useNtp) {
+      const stored = localStorage.getItem("lastPayloadNtp");
+      if (stored) ntpPayload = JSON.parse(stored);
+    }
+    if (useAaa) {
+      const stored = localStorage.getItem("lastPayloadAaa");
+      if (stored) aaaPayload = JSON.parse(stored);
+    }
+
     const payload = {
       device: formData.get("device"),
       mode: formData.get("mode"),
-      snmpv3_config: formData.get("snmpv3_config") || null,
-      ntp_config: formData.get("ntp_config") || null,
-      aaa_config: formData.get("aaa_config") || null,
+      // Config strings (fallback when checkbox unchecked)
+      snmpv3_config: !useSnmpv3 ? (formData.get("snmpv3_config") || null) : null,
+      ntp_config: !useNtp ? (formData.get("ntp_config") || null) : null,
+      aaa_config: !useAaa ? (formData.get("aaa_config") || null) : null,
+      // Payloads (when checkbox checked)
+      snmpv3_payload: snmpv3Payload,
+      ntp_payload: ntpPayload,
+      aaa_payload: aaaPayload,
       output_format: formData.get("output_format"),
     };
 
