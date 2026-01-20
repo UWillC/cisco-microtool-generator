@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import datetime
 
 router = APIRouter()
@@ -234,6 +234,199 @@ def generate_snmpv3(req: SNMPv3Request):
         "metadata": {
             "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
             "module": "SNMPv3 Generator v2",
+            "tool": "NetDevOps Micro-Tools"
+        }
+    }
+
+
+# -----------------------------
+# SNMPv3 Multiple Hosts (v3)
+# -----------------------------
+
+class SNMPv3Host(BaseModel):
+    """Single SNMP host configuration"""
+    name: str  # e.g. "PRIME", "WUG" - used for remark, group name, user prefix
+    ip_address: str
+    access_mode: str = "read-only"  # read-only | read-write
+    auth_algorithm: str = "sha-2 256"  # sha-2 256 | sha-2 384 | sha-2 512 | sha | md5
+    priv_algorithm: str = "aes 256"  # aes 256 | aes 192 | aes 128 | 3des | des
+    auth_password: str
+    priv_password: str
+
+
+class SNMPv3MultiRequest(BaseModel):
+    """Request for multiple SNMP hosts configuration"""
+    # Common settings
+    acl_name: str = "SNMP-POLLERS"
+    view_name: str = "SECUREVIEW"
+    device: str = "Cisco IOS XE"
+    output_format: str = "cli"  # cli | oneline | template
+
+    # Contact/Location (optional)
+    contact: Optional[str] = None
+    location: Optional[str] = None
+
+    # Source interface (optional)
+    source_interface: Optional[str] = None
+
+    # List of hosts
+    hosts: List[SNMPv3Host]
+
+
+def generate_snmpv3_multi_cli(req: SNMPv3MultiRequest) -> str:
+    """Generate CLI config for multiple SNMP hosts"""
+    sections = []
+
+    # Contact/Location
+    if req.contact or req.location:
+        sys_lines = ["!", "! === SNMP System Information ==="]
+        if req.contact:
+            sys_lines.append(f"snmp-server contact {req.contact}")
+        if req.location:
+            sys_lines.append(f"snmp-server location {req.location}")
+        sections.append("\n".join(sys_lines))
+
+    # ACL with remarks per host
+    acl_lines = ["!", "! === SNMP Access Control List ===", f"ip access-list standard {req.acl_name}"]
+    seq = 10
+    for host in req.hosts:
+        acl_lines.append(f" {seq} remark {host.name}")
+        seq += 10
+        acl_lines.append(f" {seq} permit {host.ip_address}")
+        seq += 10
+    acl_lines.append(f" {seq} deny any log")
+    sections.append("\n".join(acl_lines))
+
+    # View (shared)
+    sections.append(f"!\n! === SNMP View ===\nsnmp-server view {req.view_name} iso included")
+
+    # Groups per host
+    group_lines = ["!", "! === SNMP Groups ==="]
+    for host in req.hosts:
+        if host.access_mode == "read-write":
+            group_cmd = f"snmp-server group {host.name} v3 priv read {req.view_name} write {req.view_name} access {req.acl_name}"
+        else:
+            group_cmd = f"snmp-server group {host.name} v3 priv read {req.view_name} access {req.acl_name}"
+        group_lines.append(group_cmd)
+    sections.append("\n".join(group_lines))
+
+    # Users per host
+    user_lines = ["!", "! === SNMP Users ==="]
+    for host in req.hosts:
+        user_name = f"{host.name.lower()}-user"
+        user_cmd = f"snmp-server user {user_name} {host.name} v3 auth {host.auth_algorithm} {host.auth_password} priv {host.priv_algorithm} {host.priv_password}"
+        user_lines.append(user_cmd)
+    sections.append("\n".join(user_lines))
+
+    # Hosts (trap destinations)
+    host_lines = ["!", "! === SNMP Trap Destinations ==="]
+    for host in req.hosts:
+        user_name = f"{host.name.lower()}-user"
+        host_cmd = f"snmp-server host {host.ip_address} version 3 priv {user_name}"
+        host_lines.append(host_cmd)
+    sections.append("\n".join(host_lines))
+
+    # Source interface
+    if req.source_interface:
+        sections.append(f"!\n! === SNMP Source Interface ===\nsnmp-server trap-source {req.source_interface}")
+
+    # Traps
+    sections.append("!\n! === SNMP Traps ===\nsnmp-server enable traps")
+
+    return "\n".join(sections)
+
+
+def generate_snmpv3_multi_template(req: SNMPv3MultiRequest) -> str:
+    """Generate YAML template for multiple SNMP hosts"""
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Build hosts YAML section
+    hosts_yaml = []
+    for host in req.hosts:
+        user_name = f"{host.name.lower()}-user"
+        host_yaml = f"""    - name: "{host.name}"
+      ip_address: "{host.ip_address}"
+      access_mode: "{host.access_mode}"
+      user: "{user_name}"
+      auth_algorithm: "{host.auth_algorithm}"
+      auth_password: "{host.auth_password}"
+      priv_algorithm: "{host.priv_algorithm}"
+      priv_password: "{host.priv_password}" """
+        hosts_yaml.append(host_yaml)
+
+    # Build ACL entries
+    acl_entries = []
+    for host in req.hosts:
+        acl_entries.append(f'      - remark: "{host.name}"\n        permit: "{host.ip_address}"')
+
+    yaml = f"""# SNMPv3 Multi-Host YAML config generated by NetDevOps Micro-Tools
+# Date: {now}
+# Device: {req.device}
+# Hosts: {len(req.hosts)}
+
+snmpv3_multi_config:
+  system:
+    contact: {f'"{req.contact}"' if req.contact else 'null'}
+    location: {f'"{req.location}"' if req.location else 'null'}
+
+  acl:
+    name: "{req.acl_name}"
+    entries:
+{chr(10).join(acl_entries)}
+      - deny: "any"
+        log: true
+
+  view:
+    name: "{req.view_name}"
+    oid: "iso"
+    included: true
+
+  source_interface: {f'"{req.source_interface}"' if req.source_interface else 'null'}
+
+  hosts:
+{chr(10).join(hosts_yaml)}
+
+  traps:
+    enabled: true
+"""
+    return yaml.strip()
+
+
+@router.post("/snmpv3/multi")
+def generate_snmpv3_multi(req: SNMPv3MultiRequest):
+    """Generate SNMPv3 config for multiple hosts with individual settings"""
+
+    if not req.hosts:
+        return {
+            "error": "At least one host is required",
+            "config": None
+        }
+
+    if req.output_format == "template":
+        output = generate_snmpv3_multi_template(req)
+    else:
+        cli_config = generate_snmpv3_multi_cli(req)
+        if req.output_format == "oneline":
+            lines = []
+            for line in cli_config.splitlines():
+                line = line.strip()
+                if not line or line.startswith("!"):
+                    continue
+                lines.append(line)
+            output = " ; ".join(lines)
+        else:
+            output = cli_config
+
+    return {
+        "hosts_count": len(req.hosts),
+        "acl_name": req.acl_name,
+        "view_name": req.view_name,
+        "device": req.device,
+        "output_format": req.output_format,
+        "config": output,
+        "metadata": {
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
+            "module": "SNMPv3 Multi-Host Generator v3",
             "tool": "NetDevOps Micro-Tools"
         }
     }

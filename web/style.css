@@ -1302,3 +1302,134 @@ textarea:focus {
   margin-left: 24px;
   font-size: 0.8rem;
 }
+
+/* ----------------------------- */
+/* SNMP Multi-Host Generator */
+/* ----------------------------- */
+.info-box {
+  padding: 14px 18px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.info-box strong {
+  color: var(--accent);
+}
+
+.btn-small {
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  margin-left: 12px;
+}
+
+#snmp-multi-hosts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.snmp-host-card {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.snmp-host-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.snmp-host-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--accent);
+}
+
+.btn-remove-host {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: all 0.15s ease;
+}
+
+.btn-remove-host:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #f87171;
+}
+
+.snmp-host-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.snmp-host-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.snmp-host-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snmp-host-field label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.snmp-host-field input,
+.snmp-host-field select {
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.snmp-host-field input:focus,
+.snmp-host-field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.snmp-host-field input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* Golden Config SNMP Source Selector */
+.snmp-source-select {
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.snmp-source-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}

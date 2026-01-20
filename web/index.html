@@ -22,6 +22,7 @@
       </div>
       <nav class="tab-nav">
         <button class="tab-button active" data-tab="snmpv3">SNMPv3</button>
+        <button class="tab-button" data-tab="snmp-multi">SNMP Multi</button>
         <button class="tab-button" data-tab="ntp">NTP</button>
         <button class="tab-button" data-tab="aaa">AAA / TACACS+</button>
         <button class="tab-button" data-tab="golden">Golden Config</button>
@@ -218,6 +219,92 @@
             </div>
           </div>
           <textarea id="snmpv3-output" class="output-text" readonly></textarea>
+        </div>
+        </div>
+      </section>
+
+      <!-- SNMP MULTI-HOST TAB -->
+      <section id="tab-snmp-multi" class="tab-content">
+        <h2>SNMPv3 Multi-Host Generator <span class="version-badge">v3 - Enterprise</span></h2>
+
+        <div class="info-box card">
+          <strong>Multi-Host Mode:</strong> Configure multiple SNMP managers (Cisco Prime, WhatsUp Gold, Splunk, etc.)
+          with individual credentials and access levels. Each host gets its own group, user, and ACL entry.
+        </div>
+
+        <div class="generator-layout">
+        <form id="snmp-multi-form" class="card">
+
+          <!-- Common Settings -->
+          <div class="form-section-title">Common Settings</div>
+
+          <div class="form-row">
+            <label>ACL Name</label>
+            <input type="text" name="acl_name" value="SNMP-POLLERS" />
+          </div>
+
+          <div class="form-row">
+            <label>View Name</label>
+            <input type="text" name="view_name" value="SECUREVIEW" />
+          </div>
+
+          <div class="form-row">
+            <label>Device</label>
+            <input type="text" name="device" value="Cisco IOS XE" />
+          </div>
+
+          <!-- System Information -->
+          <div class="form-section-title">System Information (optional)</div>
+
+          <div class="form-row">
+            <label>Contact</label>
+            <input type="text" name="contact" placeholder="NOC Team noc@company.com" />
+          </div>
+
+          <div class="form-row">
+            <label>Location</label>
+            <input type="text" name="location" placeholder="DC1 Rack A5" />
+          </div>
+
+          <div class="form-row">
+            <label>Source Interface</label>
+            <input type="text" name="source_interface" placeholder="Loopback0" />
+          </div>
+
+          <!-- Hosts Section -->
+          <div class="form-section-title">
+            SNMP Hosts
+            <button type="button" id="snmp-multi-add-host" class="btn-secondary btn-small">+ Add Host</button>
+          </div>
+
+          <div id="snmp-multi-hosts-container">
+            <!-- Host cards will be added here dynamically -->
+          </div>
+
+          <!-- Output -->
+          <div class="form-section-title">Output</div>
+
+          <div class="form-row">
+            <label>Output Format</label>
+            <select name="output_format">
+              <option value="cli">CLI (multi-line)</option>
+              <option value="oneline">One-line</option>
+              <option value="template">YAML template</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-primary">Generate Multi-Host Config</button>
+        </form>
+
+        <div class="output-card">
+          <div class="output-header">
+            <span>Generated SNMPv3 Multi-Host configuration</span>
+            <div class="output-actions">
+              <button class="btn-secondary" data-copy-target="snmp-multi-output">Copy</button>
+              <button class="btn-secondary" data-download-target="snmp-multi-output" data-filename="snmpv3_multi_config.txt">Download</button>
+            </div>
+          </div>
+          <textarea id="snmp-multi-output" class="output-text" readonly></textarea>
         </div>
         </div>
       </section>
@@ -640,13 +727,16 @@
                 <label class="golden-use-payload-label">
                   <input type="checkbox" id="golden-use-snmpv3" name="use_snmpv3_payload" value="true">
                   <span>Use saved config</span>
-                  <span class="payload-status" id="snmpv3-payload-status">✗ Not saved</span>
                 </label>
-                <button type="button" class="btn-link golden-goto-btn" data-goto-tab="snmpv3">Go to SNMPv3 Generator</button>
+                <select id="golden-snmp-source" name="snmp_source" class="snmp-source-select">
+                  <option value="single">Single Host</option>
+                  <option value="multi">Multi Host</option>
+                </select>
+                <span class="payload-status" id="snmpv3-payload-status">✗ Not saved</span>
               </div>
             </div>
             <div class="golden-section-hint" id="golden-snmp-hint">
-              <span class="hint-icon">→</span> Not configured. Use the SNMPv3 Generator to create a config, then click "Use saved config".
+              <span class="hint-icon">→</span> Not configured. Use SNMPv3 or SNMP Multi generator first.
             </div>
             <textarea name="snmpv3_config" id="golden-snmpv3-config" rows="3" placeholder="Manual config (used if 'Use saved config' is unchecked)"></textarea>
           </div>

@@ -1,10 +1,13 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 # Import generator functions from other routers
-from api.routers.snmpv3 import generate_snmpv3_cli, generate_snmpv3_oneline, generate_snmpv3_template
+from api.routers.snmpv3 import (
+    generate_snmpv3_cli, generate_snmpv3_oneline, generate_snmpv3_template,
+    generate_snmpv3_multi_cli, generate_snmpv3_multi_template, SNMPv3MultiRequest, SNMPv3Host
+)
 from api.routers.ntp import generate_ntp_cli, generate_ntp_oneline, generate_ntp_template
 from api.routers.aaa import generate_aaa_local_only, generate_aaa_tacacs, generate_aaa_template, to_oneline as aaa_to_oneline, AAARequest
 
@@ -22,6 +25,7 @@ class GoldenConfigRequest(BaseModel):
     aaa_config: Optional[str] = None
     # Payloads for re-generation (Phase C)
     snmpv3_payload: Optional[Dict[str, Any]] = None
+    snmpv3_multi_payload: Optional[Dict[str, Any]] = None  # Multi-host SNMP
     ntp_payload: Optional[Dict[str, Any]] = None
     aaa_payload: Optional[Dict[str, Any]] = None
     # Baseline sections (v2 - modular)
@@ -70,6 +74,47 @@ def generate_snmpv3_from_payload(payload: Dict[str, Any], output_format: str) ->
         )
         if output_format == "oneline":
             return generate_snmpv3_oneline(cli)
+        return cli
+
+
+def generate_snmpv3_multi_from_payload(payload: Dict[str, Any], output_format: str) -> str:
+    """Generate SNMPv3 Multi-Host config from payload in the specified format"""
+    # Build hosts list
+    hosts = []
+    for h in payload.get("hosts", []):
+        hosts.append(SNMPv3Host(
+            name=h.get("name", ""),
+            ip_address=h.get("ip_address", ""),
+            access_mode=h.get("access_mode", "read-only"),
+            auth_algorithm=h.get("auth_algorithm", "sha-2 256"),
+            priv_algorithm=h.get("priv_algorithm", "aes 256"),
+            auth_password=h.get("auth_password", ""),
+            priv_password=h.get("priv_password", ""),
+        ))
+
+    req = SNMPv3MultiRequest(
+        acl_name=payload.get("acl_name", "SNMP-POLLERS"),
+        view_name=payload.get("view_name", "SECUREVIEW"),
+        device=payload.get("device", "Cisco IOS XE"),
+        contact=payload.get("contact"),
+        location=payload.get("location"),
+        source_interface=payload.get("source_interface"),
+        output_format=output_format,
+        hosts=hosts,
+    )
+
+    if output_format == "template":
+        return generate_snmpv3_multi_template(req)
+    else:
+        cli = generate_snmpv3_multi_cli(req)
+        if output_format == "oneline":
+            lines = []
+            for line in cli.splitlines():
+                line = line.strip()
+                if not line or line.startswith("!"):
+                    continue
+                lines.append(line)
+            return " ; ".join(lines)
         return cli
 
 
@@ -199,7 +244,10 @@ def generate_golden_template(req: GoldenConfigRequest) -> str:
     ntp_cfg = None
     aaa_cfg = None
 
-    if req.snmpv3_payload:
+    # SNMPv3: multi payload > single payload > config string
+    if req.snmpv3_multi_payload:
+        snmpv3_cfg = generate_snmpv3_multi_from_payload(req.snmpv3_multi_payload, "template")
+    elif req.snmpv3_payload:
         snmpv3_cfg = generate_snmpv3_from_payload(req.snmpv3_payload, "template")
     elif req.snmpv3_config:
         snmpv3_cfg = req.snmpv3_config
@@ -278,8 +326,11 @@ def _indent_multiline(text: str, spaces: int) -> str:
 def assemble_golden(req: GoldenConfigRequest):
     sections = []
 
-    # SNMPv3: payload takes priority over config string
-    if req.snmpv3_payload:
+    # SNMPv3: multi payload > single payload > config string
+    if req.snmpv3_multi_payload:
+        snmpv3_cfg = generate_snmpv3_multi_from_payload(req.snmpv3_multi_payload, req.output_format)
+        sections.append(f"! SNMPv3 (Multi-Host)\n{snmpv3_cfg}")
+    elif req.snmpv3_payload:
         snmpv3_cfg = generate_snmpv3_from_payload(req.snmpv3_payload, req.output_format)
         sections.append(f"! SNMPv3\n{snmpv3_cfg}")
     elif req.snmpv3_config:

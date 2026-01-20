@@ -493,7 +493,6 @@ const goldenOutput = document.getElementById("golden-output");
 // Check payload availability and update status indicators
 function updateGoldenPayloadStatus() {
   const configs = [
-    { key: "lastPayloadSnmpv3", statusId: "snmpv3-payload-status", checkboxId: "golden-use-snmpv3" },
     { key: "lastPayloadNtp", statusId: "ntp-payload-status", checkboxId: "golden-use-ntp" },
     { key: "lastPayloadAaa", statusId: "aaa-payload-status", checkboxId: "golden-use-aaa" },
   ];
@@ -520,6 +519,41 @@ function updateGoldenPayloadStatus() {
       checkboxEl.checked = true;
     }
   });
+
+  // Update SNMP status separately (depends on source selection)
+  updateGoldenSnmpStatus();
+}
+
+// Update SNMP status based on selected source (single/multi)
+function updateGoldenSnmpStatus() {
+  const sourceSelect = document.getElementById("golden-snmp-source");
+  const statusEl = document.getElementById("snmpv3-payload-status");
+  const checkboxEl = document.getElementById("golden-use-snmpv3");
+
+  if (!sourceSelect || !statusEl) return;
+
+  const source = sourceSelect.value; // "single" or "multi"
+  const key = source === "multi" ? "lastPayloadSnmpv3Multi" : "lastPayloadSnmpv3";
+  const payload = localStorage.getItem(key);
+
+  if (payload) {
+    const label = source === "multi" ? "✓ Multi" : "✓ Single";
+    statusEl.textContent = label;
+    statusEl.classList.add("available");
+    statusEl.classList.remove("not-available");
+    if (checkboxEl) checkboxEl.checked = true;
+  } else {
+    const label = source === "multi" ? "✗ Multi not saved" : "✗ Single not saved";
+    statusEl.textContent = label;
+    statusEl.classList.add("not-available");
+    statusEl.classList.remove("available");
+  }
+}
+
+// Wire up SNMP source dropdown change
+const goldenSnmpSource = document.getElementById("golden-snmp-source");
+if (goldenSnmpSource) {
+  goldenSnmpSource.addEventListener("change", updateGoldenSnmpStatus);
 }
 
 if (goldenForm && goldenOutput) {
@@ -537,14 +571,23 @@ if (goldenForm && goldenOutput) {
     const useNtp = document.getElementById("golden-use-ntp")?.checked;
     const useAaa = document.getElementById("golden-use-aaa")?.checked;
 
+    // Get SNMP source selection (single/multi)
+    const snmpSource = document.getElementById("golden-snmp-source")?.value || "single";
+
     // Get payloads from localStorage if checkbox is checked
     let snmpv3Payload = null;
+    let snmpv3MultiPayload = null;
     let ntpPayload = null;
     let aaaPayload = null;
 
     if (useSnmpv3) {
-      const stored = localStorage.getItem("lastPayloadSnmpv3");
-      if (stored) snmpv3Payload = JSON.parse(stored);
+      if (snmpSource === "multi") {
+        const stored = localStorage.getItem("lastPayloadSnmpv3Multi");
+        if (stored) snmpv3MultiPayload = JSON.parse(stored);
+      } else {
+        const stored = localStorage.getItem("lastPayloadSnmpv3");
+        if (stored) snmpv3Payload = JSON.parse(stored);
+      }
     }
     if (useNtp) {
       const stored = localStorage.getItem("lastPayloadNtp");
@@ -564,6 +607,7 @@ if (goldenForm && goldenOutput) {
       aaa_config: !useAaa ? (formData.get("aaa_config") || null) : null,
       // Payloads (when checkbox checked)
       snmpv3_payload: snmpv3Payload,
+      snmpv3_multi_payload: snmpv3MultiPayload,
       ntp_payload: ntpPayload,
       aaa_payload: aaaPayload,
       // Baseline sections (modular)
@@ -1608,3 +1652,250 @@ function updateGoldenConfigHints() {
 
 // Initial check
 updateGoldenConfigHints();
+
+// -----------------------------
+// SNMPv3 Multi-Host Generator (v3)
+// -----------------------------
+const snmpMultiForm = document.getElementById("snmp-multi-form");
+const snmpMultiOutput = document.getElementById("snmp-multi-output");
+const snmpMultiHostsContainer = document.getElementById("snmp-multi-hosts-container");
+const snmpMultiAddHostBtn = document.getElementById("snmp-multi-add-host");
+
+let snmpMultiHostCounter = 0;
+
+function createSnmpHostCard(hostId, hostData = null) {
+  const card = document.createElement("div");
+  card.className = "snmp-host-card";
+  card.dataset.hostId = hostId;
+
+  const defaults = hostData || {
+    name: "",
+    ip_address: "",
+    access_mode: "read-only",
+    auth_algorithm: "sha-2 256",
+    priv_algorithm: "aes 256",
+    auth_password: "",
+    priv_password: "",
+  };
+
+  card.innerHTML = `
+    <div class="snmp-host-header">
+      <span class="snmp-host-title">Host #${hostId + 1}</span>
+      <button type="button" class="btn-remove-host" data-host-id="${hostId}">× Remove</button>
+    </div>
+    <div class="snmp-host-fields">
+      <div class="snmp-host-row">
+        <div class="snmp-host-field">
+          <label>Name (remark)</label>
+          <input type="text" name="host_${hostId}_name" value="${defaults.name}" placeholder="PRIME, WUG, SPLUNK..." />
+        </div>
+        <div class="snmp-host-field">
+          <label>IP Address</label>
+          <input type="text" name="host_${hostId}_ip" value="${defaults.ip_address}" placeholder="10.0.0.1" />
+        </div>
+      </div>
+      <div class="snmp-host-row">
+        <div class="snmp-host-field">
+          <label>Access Mode</label>
+          <select name="host_${hostId}_access">
+            <option value="read-only" ${defaults.access_mode === "read-only" ? "selected" : ""}>Read-Only</option>
+            <option value="read-write" ${defaults.access_mode === "read-write" ? "selected" : ""}>Read-Write</option>
+          </select>
+        </div>
+        <div class="snmp-host-field">
+          <label>Auth Algorithm</label>
+          <select name="host_${hostId}_auth_algo">
+            <option value="sha-2 256" ${defaults.auth_algorithm === "sha-2 256" ? "selected" : ""}>SHA-2 256</option>
+            <option value="sha-2 384" ${defaults.auth_algorithm === "sha-2 384" ? "selected" : ""}>SHA-2 384</option>
+            <option value="sha-2 512" ${defaults.auth_algorithm === "sha-2 512" ? "selected" : ""}>SHA-2 512</option>
+            <option value="sha" ${defaults.auth_algorithm === "sha" ? "selected" : ""}>SHA (legacy)</option>
+            <option value="md5" ${defaults.auth_algorithm === "md5" ? "selected" : ""}>MD5 (legacy)</option>
+          </select>
+        </div>
+        <div class="snmp-host-field">
+          <label>Priv Algorithm</label>
+          <select name="host_${hostId}_priv_algo">
+            <option value="aes 256" ${defaults.priv_algorithm === "aes 256" ? "selected" : ""}>AES-256</option>
+            <option value="aes 192" ${defaults.priv_algorithm === "aes 192" ? "selected" : ""}>AES-192</option>
+            <option value="aes 128" ${defaults.priv_algorithm === "aes 128" ? "selected" : ""}>AES-128</option>
+            <option value="3des" ${defaults.priv_algorithm === "3des" ? "selected" : ""}>3DES</option>
+            <option value="des" ${defaults.priv_algorithm === "des" ? "selected" : ""}>DES (legacy)</option>
+          </select>
+        </div>
+      </div>
+      <div class="snmp-host-row">
+        <div class="snmp-host-field">
+          <label>Auth Password</label>
+          <input type="password" name="host_${hostId}_auth_pass" value="${defaults.auth_password}" placeholder="Min 8 chars" />
+        </div>
+        <div class="snmp-host-field">
+          <label>Priv Password</label>
+          <input type="password" name="host_${hostId}_priv_pass" value="${defaults.priv_password}" placeholder="Min 8 chars" />
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Wire up remove button
+  const removeBtn = card.querySelector(".btn-remove-host");
+  removeBtn.addEventListener("click", () => {
+    card.remove();
+    updateHostCardTitles();
+  });
+
+  return card;
+}
+
+function updateHostCardTitles() {
+  const cards = snmpMultiHostsContainer.querySelectorAll(".snmp-host-card");
+  cards.forEach((card, index) => {
+    const title = card.querySelector(".snmp-host-title");
+    if (title) title.textContent = `Host #${index + 1}`;
+  });
+}
+
+function addSnmpHost(hostData = null) {
+  const card = createSnmpHostCard(snmpMultiHostCounter, hostData);
+  snmpMultiHostsContainer.appendChild(card);
+  snmpMultiHostCounter++;
+}
+
+function getSnmpMultiHosts() {
+  const hosts = [];
+  const cards = snmpMultiHostsContainer.querySelectorAll(".snmp-host-card");
+
+  cards.forEach((card) => {
+    const hostId = card.dataset.hostId;
+    const getName = (suffix) => card.querySelector(`[name="host_${hostId}_${suffix}"]`)?.value || "";
+
+    const host = {
+      name: getName("name"),
+      ip_address: getName("ip"),
+      access_mode: getName("access"),
+      auth_algorithm: getName("auth_algo"),
+      priv_algorithm: getName("priv_algo"),
+      auth_password: getName("auth_pass"),
+      priv_password: getName("priv_pass"),
+    };
+
+    // Only include hosts with at least name and IP
+    if (host.name && host.ip_address) {
+      hosts.push(host);
+    }
+  });
+
+  return hosts;
+}
+
+function saveSnmpMultiState() {
+  if (!snmpMultiForm) return;
+
+  const formData = new FormData(snmpMultiForm);
+  const state = {
+    acl_name: formData.get("acl_name"),
+    view_name: formData.get("view_name"),
+    device: formData.get("device"),
+    contact: formData.get("contact"),
+    location: formData.get("location"),
+    source_interface: formData.get("source_interface"),
+    output_format: formData.get("output_format"),
+    hosts: getSnmpMultiHosts(),
+  };
+
+  localStorage.setItem("snmp-multi-form", JSON.stringify(state));
+}
+
+function loadSnmpMultiState() {
+  const raw = localStorage.getItem("snmp-multi-form");
+  if (!raw) {
+    // Add one empty host by default
+    addSnmpHost();
+    return;
+  }
+
+  try {
+    const state = JSON.parse(raw);
+
+    // Set form fields
+    const setField = (name, value) => {
+      const field = snmpMultiForm.querySelector(`[name="${name}"]`);
+      if (field && value) field.value = value;
+    };
+
+    setField("acl_name", state.acl_name);
+    setField("view_name", state.view_name);
+    setField("device", state.device);
+    setField("contact", state.contact);
+    setField("location", state.location);
+    setField("source_interface", state.source_interface);
+    setField("output_format", state.output_format);
+
+    // Restore hosts
+    if (state.hosts && state.hosts.length > 0) {
+      state.hosts.forEach((hostData) => addSnmpHost(hostData));
+    } else {
+      addSnmpHost();
+    }
+  } catch (_) {
+    addSnmpHost();
+  }
+}
+
+// Initialize
+if (snmpMultiHostsContainer) {
+  loadSnmpMultiState();
+}
+
+if (snmpMultiAddHostBtn) {
+  snmpMultiAddHostBtn.addEventListener("click", () => {
+    addSnmpHost();
+  });
+}
+
+if (snmpMultiForm && snmpMultiOutput) {
+  snmpMultiForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    snmpMultiOutput.value = "Generating SNMPv3 Multi-Host config...";
+
+    const formData = new FormData(snmpMultiForm);
+    const hosts = getSnmpMultiHosts();
+
+    if (hosts.length === 0) {
+      snmpMultiOutput.value = "Error: Add at least one host with name and IP address.";
+      return;
+    }
+
+    const payload = {
+      acl_name: formData.get("acl_name") || "SNMP-POLLERS",
+      view_name: formData.get("view_name") || "SECUREVIEW",
+      device: formData.get("device") || "Cisco IOS XE",
+      contact: formData.get("contact") || null,
+      location: formData.get("location") || null,
+      source_interface: formData.get("source_interface") || null,
+      output_format: formData.get("output_format") || "cli",
+      hosts: hosts,
+    };
+
+    saveSnmpMultiState();
+
+    try {
+      const data = await postJSON("/generate/snmpv3/multi", payload);
+      snmpMultiOutput.value = data.config || "";
+      showToast("Config generated", `${hosts.length} host(s)`);
+
+      // Store payload for Golden Config integration
+      if (data.config) {
+        localStorage.setItem("lastGeneratedSnmpv3Multi", data.config);
+        const payloadForGolden = { ...payload };
+        delete payloadForGolden.output_format;
+        localStorage.setItem("lastPayloadSnmpv3Multi", JSON.stringify(payloadForGolden));
+        // Update Golden Config status
+        if (typeof updateGoldenSnmpStatus === "function") {
+          updateGoldenSnmpStatus();
+        }
+      }
+    } catch (err) {
+      snmpMultiOutput.value = `Error: ${err.message}`;
+    }
+  });
+}
