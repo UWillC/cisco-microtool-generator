@@ -26,6 +26,11 @@ class NTPRequest(BaseModel):
     # Source interface (best practice: use Loopback)
     source_interface: Optional[str] = None
 
+    # CORE-only settings
+    use_ntp_master: bool = False  # Act as authoritative when external unavailable
+    ntp_master_stratum: Optional[str] = None  # Stratum level when acting as master (default: 3)
+    ntp_peer: Optional[str] = None  # Other CORE router for bidirectional sync
+
     # Authentication settings
     use_auth: bool = False
     auth_algorithm: str = "sha1"  # md5 / sha1 / sha256
@@ -112,6 +117,24 @@ def generate_ntp_cli(req: NTPRequest) -> str:
             tertiary_cmd += f" key {req.key_id}"
         lines.append(tertiary_cmd)
 
+    # Section: CORE-only settings (NTP Master + Peer)
+    if req.network_tier == "CORE":
+        # NTP Peer (bidirectional sync with other CORE router)
+        if req.ntp_peer:
+            lines.append("!")
+            lines.append("! === NTP Peer (CORE redundancy) ===")
+            peer_cmd = f"ntp peer {req.ntp_peer}"
+            if req.use_auth and req.key_id:
+                peer_cmd += f" key {req.key_id}"
+            lines.append(peer_cmd)
+
+        # NTP Master (fallback when external sources unavailable)
+        if req.use_ntp_master:
+            stratum = req.ntp_master_stratum or "3"
+            lines.append("!")
+            lines.append("! === NTP Master (fallback authoritative) ===")
+            lines.append(f"ntp master {stratum}")
+
     # Section: Access Control Lists (if enabled)
     if req.use_access_control:
         lines.append("!")
@@ -185,6 +208,13 @@ ntp_config:
       key_id: {f'"{req.key_id}"' if req.use_auth and req.key_id else "null"}"""
 
     yaml += f"""
+
+  # CORE-only settings
+  core_settings:
+    ntp_master:
+      enabled: {str(req.use_ntp_master).lower()}
+      stratum: {f'"{req.ntp_master_stratum}"' if req.ntp_master_stratum else '"3"'}
+    ntp_peer: {f'"{req.ntp_peer}"' if req.ntp_peer else "null"}
 
   authentication:
     enabled: {str(req.use_auth).lower()}

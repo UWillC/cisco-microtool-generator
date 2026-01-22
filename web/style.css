@@ -1044,8 +1044,16 @@ textarea:focus {
 .ntp-acl-field.visible,
 .snmp-acl-field.visible,
 .snmp-logging-field.visible,
-.snmp-multi-logging-field.visible {
+.snmp-multi-logging-field.visible,
+.ntp-core-field.visible,
+.ntp-master-field.visible {
   display: flex;
+}
+
+/* NTP CORE-only fields */
+.ntp-core-field,
+.ntp-master-field {
+  display: none;
 }
 
 /* Checkbox row for traps */

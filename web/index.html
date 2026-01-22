@@ -458,10 +458,10 @@
 
           <div class="form-row">
             <label>Network Tier</label>
-            <select name="network_tier">
+            <select name="network_tier" id="ntp-network-tier">
               <option value="CORE">CORE (External GPS / Stratum 1)</option>
               <option value="DISTRIBUTION">DISTRIBUTION (Upstream CORE)</option>
-              <option value="ACCESS" selected>ACCESS (Upstream CORE)</option>
+              <option value="ACCESS" selected>ACCESS (Upstream DIST/CORE)</option>
             </select>
           </div>
 
@@ -476,26 +476,47 @@
           </div>
 
           <!-- NTP Servers -->
-          <div class="form-section-title">NTP Servers</div>
+          <div class="form-section-title" id="ntp-servers-title">NTP Servers</div>
 
           <div class="form-row">
-            <label>Primary NTP (prefer)</label>
-            <input type="text" name="primary_server" placeholder="10.0.0.1 or time.google.com" />
+            <label id="ntp-primary-label">Primary Upstream</label>
+            <input type="text" name="primary_server" id="ntp-primary-input" placeholder="10.0.0.1 (dist/core)" />
           </div>
 
           <div class="form-row">
-            <label>Secondary NTP</label>
-            <input type="text" name="secondary_server" placeholder="10.0.0.2 or time.cloudflare.com" />
+            <label id="ntp-secondary-label">Secondary Upstream</label>
+            <input type="text" name="secondary_server" id="ntp-secondary-input" placeholder="10.0.0.2" />
           </div>
 
           <div class="form-row">
-            <label>Tertiary NTP (optional)</label>
-            <input type="text" name="tertiary_server" placeholder="Cisco recommends 3 sources" />
+            <label id="ntp-tertiary-label">Tertiary (optional)</label>
+            <input type="text" name="tertiary_server" id="ntp-tertiary-input" placeholder="10.0.0.3" />
           </div>
 
           <div class="form-row">
             <label>Source Interface</label>
             <input type="text" name="source_interface" placeholder="Loopback0 (recommended)" />
+          </div>
+
+          <!-- CORE-only: NTP Master & Peer -->
+          <div class="form-section-title ntp-core-field">CORE Settings</div>
+
+          <div class="form-row ntp-core-field">
+            <label>Enable NTP Master (fallback)</label>
+            <select name="use_ntp_master" id="ntp-use-master">
+              <option value="false" selected>No</option>
+              <option value="true">Yes — act as authoritative when external unavailable</option>
+            </select>
+          </div>
+
+          <div class="form-row ntp-core-field ntp-master-field">
+            <label>NTP Master Stratum</label>
+            <input type="text" name="ntp_master_stratum" placeholder="3 (recommended)" value="3" />
+          </div>
+
+          <div class="form-row ntp-core-field">
+            <label>NTP Peer (other CORE router)</label>
+            <input type="text" name="ntp_peer" placeholder="10.0.0.2 (core-rtr02) — optional" />
           </div>
 
           <!-- Authentication -->

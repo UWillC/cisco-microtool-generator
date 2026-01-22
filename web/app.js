@@ -397,6 +397,91 @@ function updateNtpAclFieldsVisibility() {
   });
 }
 
+// NTP Tier configuration - labels and placeholders per tier
+const ntpTierConfig = {
+  CORE: {
+    title: "NTP Sources (External)",
+    primary: { label: "GPS / Stratum 1 Source (prefer)", placeholder: "time.nist.gov or GPS receiver IP" },
+    secondary: { label: "Alternate Stratum 1", placeholder: "time.google.com" },
+    tertiary: { label: "Backup Stratum 1 (optional)", placeholder: "time.cloudflare.com" },
+    showCoreFields: true,
+  },
+  DISTRIBUTION: {
+    title: "NTP Sources (CORE Routers)",
+    primary: { label: "Primary CORE Router (prefer)", placeholder: "10.0.0.1 (core-rtr01)" },
+    secondary: { label: "Secondary CORE Router", placeholder: "10.0.0.2 (core-rtr02)" },
+    tertiary: { label: "Backup CORE (optional)", placeholder: "10.0.0.3 or external NTP" },
+    showCoreFields: false,
+  },
+  ACCESS: {
+    title: "NTP Sources (Upstream)",
+    primary: { label: "Primary Upstream (prefer)", placeholder: "10.0.0.1 (dist/core)" },
+    secondary: { label: "Secondary Upstream", placeholder: "10.0.0.2" },
+    tertiary: { label: "Tertiary Upstream (optional)", placeholder: "10.0.0.3" },
+    showCoreFields: false,
+  },
+};
+
+const ntpNetworkTier = document.getElementById("ntp-network-tier");
+const ntpUseMaster = document.getElementById("ntp-use-master");
+
+// Update NTP form based on selected tier
+function updateNtpTierFields() {
+  if (!ntpNetworkTier) return;
+
+  const tier = ntpNetworkTier.value;
+  const config = ntpTierConfig[tier] || ntpTierConfig.ACCESS;
+
+  // Update title
+  const titleEl = document.getElementById("ntp-servers-title");
+  if (titleEl) titleEl.textContent = config.title;
+
+  // Update labels and placeholders
+  const primaryLabel = document.getElementById("ntp-primary-label");
+  const primaryInput = document.getElementById("ntp-primary-input");
+  const secondaryLabel = document.getElementById("ntp-secondary-label");
+  const secondaryInput = document.getElementById("ntp-secondary-input");
+  const tertiaryLabel = document.getElementById("ntp-tertiary-label");
+  const tertiaryInput = document.getElementById("ntp-tertiary-input");
+
+  if (primaryLabel) primaryLabel.textContent = config.primary.label;
+  if (primaryInput) primaryInput.placeholder = config.primary.placeholder;
+  if (secondaryLabel) secondaryLabel.textContent = config.secondary.label;
+  if (secondaryInput) secondaryInput.placeholder = config.secondary.placeholder;
+  if (tertiaryLabel) tertiaryLabel.textContent = config.tertiary.label;
+  if (tertiaryInput) tertiaryInput.placeholder = config.tertiary.placeholder;
+
+  // Show/hide CORE-only fields
+  document.querySelectorAll(".ntp-core-field").forEach((el) => {
+    if (config.showCoreFields) el.classList.add("visible");
+    else el.classList.remove("visible");
+  });
+
+  // Also update master field visibility
+  updateNtpMasterFieldVisibility();
+}
+
+// Toggle visibility of NTP Master stratum field
+function updateNtpMasterFieldVisibility() {
+  const tierIsCORE = ntpNetworkTier && ntpNetworkTier.value === "CORE";
+  const masterEnabled = ntpUseMaster && ntpUseMaster.value === "true";
+  const show = tierIsCORE && masterEnabled;
+
+  document.querySelectorAll(".ntp-master-field").forEach((el) => {
+    if (show) el.classList.add("visible");
+    else el.classList.remove("visible");
+  });
+}
+
+if (ntpNetworkTier) {
+  ntpNetworkTier.addEventListener("change", updateNtpTierFields);
+  updateNtpTierFields(); // initial state
+}
+
+if (ntpUseMaster) {
+  ntpUseMaster.addEventListener("change", updateNtpMasterFieldVisibility);
+}
+
 if (ntpUseAuth) {
   ntpUseAuth.addEventListener("change", updateNtpAuthFieldsVisibility);
   updateNtpAuthFieldsVisibility(); // initial state
@@ -410,6 +495,7 @@ if (ntpUseAcl) {
 if (ntpForm && ntpOutput) {
   loadFormState("ntp-form", ntpForm);
   // Re-apply visibility after loading state
+  updateNtpTierFields();
   updateNtpAuthFieldsVisibility();
   updateNtpAclFieldsVisibility();
 
@@ -420,15 +506,27 @@ if (ntpForm && ntpOutput) {
     const formData = new FormData(ntpForm);
     const useAuth = formData.get("use_auth") === "true";
     const useAcl = formData.get("use_access_control") === "true";
+    const networkTier = formData.get("network_tier");
+
+    // CORE-only settings
+    const isCORE = networkTier === "CORE";
+    const useNtpMaster = isCORE && formData.get("use_ntp_master") === "true";
+    const ntpMasterStratum = useNtpMaster ? formData.get("ntp_master_stratum") || "3" : null;
+    const ntpPeer = isCORE ? formData.get("ntp_peer") || null : null;
 
     const payload = {
       device: formData.get("device"),
-      network_tier: formData.get("network_tier"),
+      network_tier: networkTier,
       timezone: formData.get("timezone"),
       primary_server: formData.get("primary_server"),
       secondary_server: formData.get("secondary_server") || null,
       tertiary_server: formData.get("tertiary_server") || null,
       source_interface: formData.get("source_interface") || null,
+      // CORE-only
+      use_ntp_master: useNtpMaster,
+      ntp_master_stratum: ntpMasterStratum,
+      ntp_peer: ntpPeer,
+      // Auth
       use_auth: useAuth,
       auth_algorithm: useAuth ? formData.get("auth_algorithm") : "sha1",
       key_id: useAuth ? formData.get("key_id") || null : null,
@@ -524,36 +622,59 @@ const goldenOutput = document.getElementById("golden-output");
 
 // Check payload availability and update status indicators
 function updateGoldenPayloadStatus() {
-  const configs = [
-    { key: "lastPayloadNtp", statusId: "ntp-payload-status", checkboxId: "golden-use-ntp" },
-    { key: "lastPayloadAaa", statusId: "aaa-payload-status", checkboxId: "golden-use-aaa" },
-  ];
+  // AAA - simple available/not available
+  const aaaStatusEl = document.getElementById("aaa-payload-status");
+  const aaaCheckboxEl = document.getElementById("golden-use-aaa");
+  const aaaPayload = localStorage.getItem("lastPayloadAaa");
 
-  configs.forEach(({ key, statusId, checkboxId }) => {
-    const statusEl = document.getElementById(statusId);
-    const checkboxEl = document.getElementById(checkboxId);
-    const payload = localStorage.getItem(key);
-
-    if (statusEl) {
-      if (payload) {
-        statusEl.textContent = "✓ Available";
-        statusEl.classList.add("available");
-        statusEl.classList.remove("not-available");
-      } else {
-        statusEl.textContent = "✗ Not saved";
-        statusEl.classList.add("not-available");
-        statusEl.classList.remove("available");
-      }
+  if (aaaStatusEl) {
+    if (aaaPayload) {
+      aaaStatusEl.textContent = "✓ Available";
+      aaaStatusEl.classList.add("available");
+      aaaStatusEl.classList.remove("not-available");
+    } else {
+      aaaStatusEl.textContent = "✗ Not saved";
+      aaaStatusEl.classList.add("not-available");
+      aaaStatusEl.classList.remove("available");
     }
+  }
+  if (aaaCheckboxEl && aaaPayload) {
+    aaaCheckboxEl.checked = true;
+  }
 
-    // Auto-check if payload is available
-    if (checkboxEl && payload) {
-      checkboxEl.checked = true;
-    }
-  });
+  // NTP - show tier in status
+  updateGoldenNtpStatus();
 
-  // Update SNMP status separately (depends on source selection)
+  // SNMP - depends on source selection (single/multi)
   updateGoldenSnmpStatus();
+}
+
+// Update NTP status showing saved tier (CORE/DIST/ACCESS)
+function updateGoldenNtpStatus() {
+  const statusEl = document.getElementById("ntp-payload-status");
+  const checkboxEl = document.getElementById("golden-use-ntp");
+  const payload = localStorage.getItem("lastPayloadNtp");
+
+  if (!statusEl) return;
+
+  if (payload) {
+    try {
+      const data = JSON.parse(payload);
+      const tier = data.network_tier || "ACCESS";
+      // Short labels: CORE, DIST, ACCESS
+      const tierLabel = tier === "DISTRIBUTION" ? "DIST" : tier;
+      statusEl.textContent = `✓ ${tierLabel}`;
+    } catch {
+      statusEl.textContent = "✓ Available";
+    }
+    statusEl.classList.add("available");
+    statusEl.classList.remove("not-available");
+    if (checkboxEl) checkboxEl.checked = true;
+  } else {
+    statusEl.textContent = "✗ Not saved";
+    statusEl.classList.add("not-available");
+    statusEl.classList.remove("available");
+  }
 }
 
 // Update SNMP status based on selected source (single/multi)
