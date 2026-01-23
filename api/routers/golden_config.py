@@ -143,12 +143,18 @@ def generate_ntp_from_payload(payload: Dict[str, Any], output_format: str) -> st
             self.secondary_server = p.get("secondary_server")
             self.tertiary_server = p.get("tertiary_server")
             self.source_interface = p.get("source_interface")
+            # CORE-only settings (NTP v3)
+            self.use_ntp_master = p.get("use_ntp_master", False)
+            self.ntp_master_stratum = p.get("ntp_master_stratum")
+            self.ntp_peer = p.get("ntp_peer")
+            # Authentication
             self.use_auth = p.get("use_auth", False)
             self.auth_algorithm = p.get("auth_algorithm", "sha1")
             self.key_id = p.get("key_id")
             self.key_value = p.get("key_value")
             self.use_logging = p.get("use_logging", True)
             self.update_calendar = p.get("update_calendar", False)
+            # Access control
             self.use_access_control = p.get("use_access_control", False)
             self.acl_peer_hosts = p.get("acl_peer_hosts")
             self.acl_serve_network = p.get("acl_serve_network")
@@ -167,11 +173,22 @@ def generate_ntp_from_payload(payload: Dict[str, Any], output_format: str) -> st
 
 def generate_aaa_from_payload(payload: Dict[str, Any], output_format: str) -> str:
     """Generate AAA config from payload in the specified format"""
-    # Build AAARequest object
+    # Build AAARequest object with all v2 fields
     req = AAARequest(
         device=payload.get("device", "Cisco IOS XE"),
         mode=payload.get("mode", "tacacs"),
+        # Credentials
         enable_secret=payload.get("enable_secret"),
+        use_sha256_secret=payload.get("use_sha256_secret", False),
+        # Local fallback user
+        local_username=payload.get("local_username"),
+        local_password=payload.get("local_password"),
+        # SSH Prerequisites
+        domain_name=payload.get("domain_name"),
+        ssh_modulus=payload.get("ssh_modulus", "2048"),
+        ssh_version=payload.get("ssh_version", "2"),
+        # TACACS+ settings
+        tacacs_group_name=payload.get("tacacs_group_name", "TAC-SERVERS"),
         tacacs1_name=payload.get("tacacs1_name"),
         tacacs1_ip=payload.get("tacacs1_ip"),
         tacacs1_key=payload.get("tacacs1_key"),
@@ -179,6 +196,10 @@ def generate_aaa_from_payload(payload: Dict[str, Any], output_format: str) -> st
         tacacs2_ip=payload.get("tacacs2_ip"),
         tacacs2_key=payload.get("tacacs2_key"),
         source_interface=payload.get("source_interface"),
+        server_timeout=payload.get("server_timeout"),
+        # Accounting
+        use_exec_accounting=payload.get("use_exec_accounting", True),
+        use_command_accounting=payload.get("use_command_accounting", True),
         output_format=output_format,
     )
 
@@ -186,7 +207,7 @@ def generate_aaa_from_payload(payload: Dict[str, Any], output_format: str) -> st
         return generate_aaa_template(req)
     else:
         if req.mode == "local-only":
-            cli = generate_aaa_local_only(enable_secret=req.enable_secret)
+            cli = generate_aaa_local_only(req)
         else:
             cli = generate_aaa_tacacs(req)
         if output_format == "oneline":
@@ -217,12 +238,15 @@ logging console warnings
 """
 
 
-def generate_security_baseline(mode: str):
+def generate_security_baseline(mode: str, skip_ssh: bool = False):
     base = """
 ! Security baseline
 no ip http server
 no ip http secure-server
-ip ssh version 2
+"""
+    # Only add SSH settings if not already provided by AAA
+    if not skip_ssh:
+        base += """ip ssh version 2
 ip ssh authentication-retries 3
 ip ssh time-out 60
 """
@@ -270,8 +294,11 @@ def generate_golden_template(req: GoldenConfigRequest) -> str:
     elif req.ntp_config:
         ntp_cfg = req.ntp_config
 
+    # Check if AAA has SSH prerequisites
+    aaa_has_ssh = False
     if req.aaa_payload:
         aaa_cfg = generate_aaa_from_payload(req.aaa_payload, "template")
+        aaa_has_ssh = bool(req.aaa_payload.get("domain_name"))
     elif req.aaa_config:
         aaa_cfg = req.aaa_config
 
@@ -315,9 +342,10 @@ golden_config:
       enabled: {str(req.include_security).lower()}
       http_server: false
       https_server: false
-      ssh_version: 2
-      ssh_auth_retries: 3
-      ssh_timeout: 60
+      ssh_in_aaa: {str(aaa_has_ssh).lower()}  # If true, SSH configured in AAA section
+      ssh_version: {'"n/a - see AAA"' if aaa_has_ssh else '2'}
+      ssh_auth_retries: {'"n/a - see AAA"' if aaa_has_ssh else '3'}
+      ssh_timeout: {'"n/a - see AAA"' if aaa_has_ssh else '60'}
       cdp: {"false" if req.mode == "hardened" else "true"}
       lldp: {"false" if req.mode == "hardened" else "true"}
 """
@@ -357,9 +385,13 @@ def assemble_golden(req: GoldenConfigRequest):
         sections.append(f"! NTP\n{req.ntp_config}")
 
     # AAA: payload takes priority over config string
+    # Track if AAA has SSH prerequisites to avoid duplication in security baseline
+    aaa_has_ssh = False
     if req.aaa_payload:
         aaa_cfg = generate_aaa_from_payload(req.aaa_payload, req.output_format)
         sections.append(f"! AAA\n{aaa_cfg}")
+        # Check if AAA includes SSH prerequisites (domain_name is set)
+        aaa_has_ssh = bool(req.aaa_payload.get("domain_name"))
     elif req.aaa_config:
         sections.append(f"! AAA\n{req.aaa_config}")
 
@@ -369,7 +401,8 @@ def assemble_golden(req: GoldenConfigRequest):
     if req.include_logging:
         sections.append("! Logging\n" + generate_logging())
     if req.include_security:
-        sections.append("! Security\n" + generate_security_baseline(req.mode))
+        # Skip SSH in security baseline if AAA already provides SSH prerequisites
+        sections.append("! Security\n" + generate_security_baseline(req.mode, skip_ssh=aaa_has_ssh))
 
     final = "\n\n".join(sections)
 

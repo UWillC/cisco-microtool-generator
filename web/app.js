@@ -568,19 +568,57 @@ if (ntpForm && ntpOutput) {
 // -----------------------------
 const aaaForm = document.getElementById("aaa-form");
 const aaaOutput = document.getElementById("aaa-output");
+const aaaModeSelect = document.getElementById("aaa-mode");
+
+// Toggle TACACS-specific fields based on mode
+function updateAaaModeFields() {
+  if (!aaaModeSelect) return;
+  const mode = aaaModeSelect.value;
+  const tacacsFields = document.querySelectorAll(".aaa-tacacs-field");
+
+  tacacsFields.forEach((el) => {
+    if (mode === "tacacs") {
+      el.classList.remove("hidden");
+    } else {
+      el.classList.add("hidden");
+    }
+  });
+}
+
+// Wire up mode change listener
+if (aaaModeSelect) {
+  aaaModeSelect.addEventListener("change", updateAaaModeFields);
+  // Initialize on page load
+  updateAaaModeFields();
+}
 
 if (aaaForm && aaaOutput) {
   loadFormState("aaa-form", aaaForm);
+  // Re-apply mode visibility after loading saved state
+  updateAaaModeFields();
 
   aaaForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     aaaOutput.value = "Generating AAA config...";
 
     const formData = new FormData(aaaForm);
+    const mode = formData.get("mode") === "local-only" ? "local-only" : "tacacs";
+
     const payload = {
       device: formData.get("device"),
-      mode: formData.get("mode") === "local-only" ? "local-only" : "tacacs",
+      mode: mode,
+      // SSH Prerequisites
+      domain_name: formData.get("domain_name") || null,
+      ssh_modulus: formData.get("ssh_modulus") || "2048",
+      ssh_version: formData.get("ssh_version") || "2",
+      // Credentials
       enable_secret: formData.get("enable_secret") || null,
+      use_sha256_secret: formData.get("use_sha256_secret") === "true",
+      // Local Fallback User
+      local_username: formData.get("local_username") || null,
+      local_password: formData.get("local_password") || null,
+      // TACACS+ Settings
+      tacacs_group_name: formData.get("tacacs_group_name") || "TAC-SERVERS",
       tacacs1_name: formData.get("tacacs1_name") || null,
       tacacs1_ip: formData.get("tacacs1_ip") || null,
       tacacs1_key: formData.get("tacacs1_key") || null,
@@ -588,6 +626,9 @@ if (aaaForm && aaaOutput) {
       tacacs2_ip: formData.get("tacacs2_ip") || null,
       tacacs2_key: formData.get("tacacs2_key") || null,
       source_interface: formData.get("source_interface") || null,
+      server_timeout: formData.get("server_timeout") ? parseInt(formData.get("server_timeout")) : null,
+      use_exec_accounting: formData.get("use_exec_accounting") === "true",
+      use_command_accounting: formData.get("use_command_accounting") === "true",
       output_format: formData.get("output_format"),
     };
 

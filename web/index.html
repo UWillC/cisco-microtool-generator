@@ -682,7 +682,7 @@
         <form id="aaa-form" class="card">
           <div class="form-row">
             <label>Mode</label>
-            <select name="mode">
+            <select name="mode" id="aaa-mode">
               <option value="tacacs">TACACS+ with local fallback</option>
               <option value="local-only">Local-only</option>
             </select>
@@ -693,45 +693,128 @@
             <input type="text" name="device" value="Cisco IOS XE" />
           </div>
 
+          <!-- SSH Prerequisites Section -->
+          <div class="form-section-title">SSH Prerequisites</div>
+
+          <div class="form-row">
+            <label>Domain Name</label>
+            <input type="text" name="domain_name" placeholder="company.local (required for SSH)" />
+          </div>
+
+          <div class="form-row">
+            <label>RSA Key Modulus</label>
+            <select name="ssh_modulus">
+              <option value="2048" selected>2048 bits (standard)</option>
+              <option value="4096">4096 bits (high security)</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label>SSH Version</label>
+            <select name="ssh_version">
+              <option value="2" selected>Version 2 (recommended)</option>
+              <option value="1.99">Version 1.99 (compatibility)</option>
+            </select>
+          </div>
+
+          <!-- Credentials Section -->
+          <div class="form-section-title">Credentials</div>
+
           <div class="form-row">
             <label>Enable secret (optional)</label>
             <input type="password" name="enable_secret" placeholder="EnablePass123" />
           </div>
 
           <div class="form-row">
+            <label>Use SHA-256 (Type 8)</label>
+            <select name="use_sha256_secret">
+              <option value="true" selected>Yes — algorithm-type sha256 (recommended)</option>
+              <option value="false">No — standard Type 5</option>
+            </select>
+          </div>
+
+          <!-- Local Fallback User Section -->
+          <div class="form-section-title">Local Fallback User</div>
+
+          <div class="form-row">
+            <label>Username (console fallback)</label>
+            <input type="text" name="local_username" placeholder="admin (used when TACACS+ down)" />
+          </div>
+
+          <div class="form-row">
+            <label>Password</label>
+            <input type="password" name="local_password" placeholder="LocalPass123" />
+          </div>
+
+          <!-- TACACS+ Server Section -->
+          <div class="form-section-title aaa-tacacs-field">TACACS+ Servers</div>
+
+          <div class="form-row aaa-tacacs-field">
+            <label>Server Group Name</label>
+            <input type="text" name="tacacs_group_name" value="TAC-SERVERS" placeholder="TAC-SERVERS" />
+          </div>
+
+          <div class="form-row aaa-tacacs-field">
             <label>Primary TACACS+ name</label>
             <input type="text" name="tacacs1_name" value="tacacs-primary" />
           </div>
 
-          <div class="form-row">
+          <div class="form-row aaa-tacacs-field">
             <label>Primary TACACS+ IP</label>
             <input type="text" name="tacacs1_ip" value="10.10.10.1" />
           </div>
 
-          <div class="form-row">
+          <div class="form-row aaa-tacacs-field">
             <label>Primary TACACS+ key</label>
             <input type="password" name="tacacs1_key" value="TacacsKey123" />
           </div>
 
-          <div class="form-row">
-            <label>Secondary TACACS+ name</label>
+          <div class="form-row aaa-tacacs-field">
+            <label>Secondary TACACS+ name (optional)</label>
             <input type="text" name="tacacs2_name" placeholder="tacacs-backup" />
           </div>
 
-          <div class="form-row">
+          <div class="form-row aaa-tacacs-field">
             <label>Secondary TACACS+ IP</label>
             <input type="text" name="tacacs2_ip" placeholder="10.10.10.2" />
           </div>
 
-          <div class="form-row">
+          <div class="form-row aaa-tacacs-field">
             <label>Secondary TACACS+ key</label>
             <input type="password" name="tacacs2_key" placeholder="TacacsKey123" />
           </div>
 
-          <div class="form-row">
+          <div class="form-row aaa-tacacs-field">
+            <label>Server Timeout (seconds)</label>
+            <input type="text" name="server_timeout" placeholder="5 (default)" />
+          </div>
+
+          <div class="form-row aaa-tacacs-field">
             <label>Source interface (optional)</label>
             <input type="text" name="source_interface" placeholder="Loopback0" />
           </div>
+
+          <!-- Accounting Section -->
+          <div class="form-section-title aaa-tacacs-field">Accounting (Best Practice)</div>
+
+          <div class="form-row aaa-tacacs-field">
+            <label>Exec Accounting</label>
+            <select name="use_exec_accounting">
+              <option value="true" selected>Yes — track login/logout sessions</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+
+          <div class="form-row aaa-tacacs-field">
+            <label>Command Accounting (level 15)</label>
+            <select name="use_command_accounting">
+              <option value="true" selected>Yes — track privileged commands</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+
+          <!-- Output Section -->
+          <div class="form-section-title">Output</div>
 
           <div class="form-row">
             <label>Output format</label>
