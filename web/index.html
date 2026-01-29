@@ -30,6 +30,7 @@
         <button class="tab-button" data-tab="iperf">iPerf3</button>
         <button class="tab-button" data-tab="subnet">Subnet Calc</button>
         <button class="tab-button" data-tab="mtu">MTU Calc</button>
+        <button class="tab-button" data-tab="config-parser">Config Parser</button>
         <button class="tab-button" data-tab="profiles">Profiles</button>
       </nav>
     </aside>
@@ -1908,6 +1909,136 @@ Use with caution on production!">debug ip icmp</code>
             </div>
             <textarea id="mtu-output" class="output-text" readonly placeholder="Select tunnel type and click Calculate"></textarea>
         </div>
+        </div>
+      </section>
+
+      <!-- CONFIG PARSER TAB -->
+      <section id="tab-config-parser" class="tab-content">
+        <h2>Config Parser <span class="version-badge">Parse show run to JSON</span></h2>
+
+        <!-- Collapsible hints panel -->
+        <div class="hints-panel card" id="config-parser-hints-panel">
+          <div class="hints-header" id="config-parser-hints-toggle">
+            <div class="hints-title">
+              <span class="hints-icon">💡</span>
+              Supported Sections — What gets parsed
+            </div>
+            <span class="hints-arrow">▼</span>
+          </div>
+          <div class="hints-content" id="config-parser-hints-content">
+            <div class="hints-grid">
+              <div class="hints-section">
+                <div class="hints-section-title">Basic Info</div>
+                <code class="hints-code" data-tooltip="Extracts device hostname
+Example: hostname CORE-RTR-01
+Parsed as: hostname: 'CORE-RTR-01'">hostname</code>
+                <code class="hints-code" data-tooltip="Extracts domain name
+Example: ip domain-name example.com
+Parsed as: domain_name: 'example.com'">ip domain-name</code>
+                <code class="hints-code" data-tooltip="Detects if enable secret is configured
+Returns: true/false">enable secret</code>
+                <code class="hints-code" data-tooltip="Detects if password encryption is on
+service password-encryption">service pwd-enc</code>
+              </div>
+              <div class="hints-section">
+                <div class="hints-section-title">Interfaces</div>
+                <code class="hints-code" data-tooltip="Parses all interface blocks
+Extracts: name, description, IP, mask
+shutdown status, switchport mode, VLAN">interface GigabitEthernet0/0</code>
+                <code class="hints-code" data-tooltip="Captures interface descriptions
+Example: description WAN to ISP-A
+Parsed into interface object">description</code>
+                <code class="hints-code" data-tooltip="Extracts IP address and subnet mask
+Example: ip address 10.0.0.1 255.255.255.0
+Both values captured separately">ip address X.X.X.X</code>
+              </div>
+              <div class="hints-section">
+                <div class="hints-section-title">SNMP</div>
+                <code class="hints-code" data-tooltip="Parses community strings
+Example: snmp-server community PUBLIC RO
+Extracts: name, access (RO/RW), ACL">snmp-server community</code>
+                <code class="hints-code" data-tooltip="Parses SNMPv3 users
+Extracts: username, group, auth type">snmp-server user</code>
+                <code class="hints-code" data-tooltip="Parses trap destinations
+Extracts: address, version, community/user">snmp-server host</code>
+                <code class="hints-code" data-tooltip="Extracts SNMP contact/location
+Useful for documentation">location / contact</code>
+              </div>
+              <div class="hints-section">
+                <div class="hints-section-title">NTP</div>
+                <code class="hints-code" data-tooltip="Parses NTP server addresses
+Extracts: address, key, prefer flag
+Example: ntp server 10.0.0.1 prefer">ntp server</code>
+                <code class="hints-code" data-tooltip="Extracts NTP source interface
+Example: ntp source Loopback0">ntp source</code>
+                <code class="hints-code" data-tooltip="Detects if NTP auth is enabled
+Returns: authentication_enabled: true/false">ntp authenticate</code>
+                <code class="hints-code" data-tooltip="Lists trusted NTP keys
+Example: ntp trusted-key 1 2 3">ntp trusted-key</code>
+              </div>
+              <div class="hints-section">
+                <div class="hints-section-title">Logging</div>
+                <code class="hints-code" data-tooltip="Extracts syslog buffer size
+Example: logging buffered 64000
+Parsed as: buffer_size: 64000">logging buffered</code>
+                <code class="hints-code" data-tooltip="Extracts console logging level
+Example: logging console warnings">logging console</code>
+                <code class="hints-code" data-tooltip="Lists all syslog destinations
+Both 'logging host X' and 'logging X.X.X.X' formats">logging host</code>
+              </div>
+              <div class="hints-section">
+                <div class="hints-section-title">AAA / Users</div>
+                <code class="hints-code" data-tooltip="Detects if AAA is enabled
+aaa new-model command presence">aaa new-model</code>
+                <code class="hints-code" data-tooltip="Parses authentication/authorization lists
+Extracts: type, name, methods">aaa authentication</code>
+                <code class="hints-code" data-tooltip="Parses TACACS+ server configs
+Both legacy and modern syntax">tacacs server</code>
+                <code class="hints-code" data-tooltip="Extracts local user accounts
+Parses: username, privilege, secret type">username X secret</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="generator-layout">
+          <form id="config-parser-form" class="card">
+            <div class="form-section-title">Paste Configuration</div>
+
+            <div class="form-row">
+              <label>show running-config output</label>
+              <textarea id="config-parser-input" rows="16" placeholder="Paste your Cisco IOS/IOS-XE 'show running-config' output here...
+
+Example:
+hostname CORE-RTR-01
+!
+ip domain-name example.com
+!
+interface GigabitEthernet0/0
+ description WAN Link
+ ip address 10.0.0.1 255.255.255.0
+!"></textarea>
+            </div>
+
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input type="checkbox" id="config-parser-summary" >
+                Summary only (counts, no details)
+              </label>
+            </div>
+
+            <button type="submit" class="btn-primary">Parse Config</button>
+          </form>
+
+          <div class="output-card">
+            <div class="output-header">
+              <span>Parsed JSON</span>
+              <div class="output-actions">
+                <button class="btn-secondary" data-copy-target="config-parser-output">Copy</button>
+              </div>
+            </div>
+            <textarea id="config-parser-output" class="output-text" readonly placeholder="Parsed configuration will appear here as JSON..."></textarea>
+          </div>
         </div>
       </section>
 

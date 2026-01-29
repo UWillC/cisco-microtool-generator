@@ -2517,3 +2517,67 @@ if (mtuForm && mtuOutput) {
 
 // Initialize MTU hints panel
 initHintsPanel("mtu-hints-panel", "mtu-hints-toggle");
+
+// =============================================
+// CONFIG PARSER
+// =============================================
+
+const configParserForm = document.getElementById("config-parser-form");
+const configParserOutput = document.getElementById("config-parser-output");
+const configParserInput = document.getElementById("config-parser-input");
+const configParserSummary = document.getElementById("config-parser-summary");
+
+// Format parsed config result
+function formatParsedConfig(data, summaryOnly) {
+  if (summaryOnly) {
+    // Summary mode - show counts
+    let result = `Configuration Summary
+====================
+
+Hostname: ${data.hostname || "(not found)"}
+
+Counts:
+  Interfaces:       ${data.summary.total_interfaces} total (${data.summary.active_interfaces} active, ${data.summary.l3_interfaces} with IP)
+  SNMP Communities: ${data.summary.snmp_communities}
+  SNMPv3 Users:     ${data.summary.snmp_v3_users}
+  NTP Servers:      ${data.summary.ntp_servers}
+  AAA Enabled:      ${data.summary.aaa_enabled ? "Yes" : "No"}
+  Local Users:      ${data.summary.local_users}
+  TACACS Servers:   ${data.summary.tacacs_servers}`;
+    return result;
+  }
+
+  // Full JSON output
+  return JSON.stringify(data, null, 2);
+}
+
+// Config Parser form submit handler
+if (configParserForm && configParserOutput) {
+  configParserForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const configText = configParserInput?.value || "";
+    const summaryOnly = configParserSummary?.checked ?? false;
+
+    if (!configText.trim()) {
+      configParserOutput.value = "Error: Please paste a configuration to parse.";
+      return;
+    }
+
+    configParserOutput.value = "Parsing configuration...";
+
+    try {
+      const endpoint = summaryOnly ? "/tools/config/parse/summary" : "/tools/config/parse";
+      const data = await postJSON(endpoint, {
+        config_text: configText,
+      });
+
+      configParserOutput.value = formatParsedConfig(data, summaryOnly);
+    } catch (err) {
+      configParserOutput.value = `Error: ${err.message}`;
+    }
+  });
+}
+
+// Initialize Config Parser hints panel
+initHintsPanel("config-parser-hints-panel", "config-parser-hints-toggle");
