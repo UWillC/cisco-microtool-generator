@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: netdevops-micro-tools
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"

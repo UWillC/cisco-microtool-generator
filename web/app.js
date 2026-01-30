@@ -1,5 +1,15 @@
-// Change this if your API runs on a different host/port
-const API_BASE_URL = "http://127.0.0.1:8000";
+// API base URL - auto-detect based on how the page is loaded
+// - file:// protocol (direct open) → localhost:8000
+// - localhost/127.0.0.1 → localhost:8000 (Live Server + backend)
+// - cloud deploy → same origin (empty string)
+const API_BASE_URL = (function() {
+  const proto = window.location.protocol;
+  const host = window.location.hostname;
+  if (proto === "file:" || host === "127.0.0.1" || host === "localhost") {
+    return "http://127.0.0.1:8000";
+  }
+  return "";
+})();
 
 // -----------------------------
 // Tabs
