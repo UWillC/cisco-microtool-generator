@@ -2050,7 +2050,10 @@ interface GigabitEthernet0/0
         <div class="score-widget card">
           <div class="score-widget-header">
             <h3>Security Scores</h3>
-            <button id="score-refresh" class="btn-secondary">Refresh</button>
+            <div class="score-widget-actions">
+              <button id="score-refresh" class="btn-secondary">Refresh</button>
+              <button id="score-export-pdf" class="btn-primary">Export PDF</button>
+            </div>
           </div>
           <div id="score-content" class="score-content">
             <p class="summary-muted">Click Refresh to calculate security scores for all profiles.</p>

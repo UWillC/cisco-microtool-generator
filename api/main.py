@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from api.routers import snmpv3, ntp, golden_config, aaa, cve, profiles, iperf, subnet, mtu, config_parser
+from api.routers import snmpv3, ntp, golden_config, aaa, cve, profiles, iperf, subnet, mtu, config_parser, export
 from models.meta import MetaInfo
 import datetime
 import os
@@ -43,6 +43,7 @@ app.include_router(iperf.router, prefix="/generate", tags=["iPerf3"])
 app.include_router(subnet.router, prefix="/tools", tags=["IP Subnet Calculator"])
 app.include_router(mtu.router, prefix="/tools", tags=["MTU Calculator"])
 app.include_router(config_parser.router, prefix="/tools", tags=["Config Parser"])
+app.include_router(export.router, tags=["Export"])
 
 
 # Determine base path for static files
@@ -79,9 +80,9 @@ def health():
 @app.get("/meta/version", response_model=MetaInfo)
 def meta_version():
     return MetaInfo(
-        version="0.4.1",
+        version="0.4.2",
         build_time=datetime.datetime.utcnow().isoformat() + "Z",
-        feature_flags=["cve_engine_v3", "nvd_enrichment", "nvd_cache", "web_ui_v2", "profiles_v2", "profiles_cve", "security_score", "subnet_calc", "mtu_calc", "config_parser", "cloud_deploy"]
+        feature_flags=["cve_engine_v3", "nvd_enrichment", "nvd_cache", "web_ui_v2", "profiles_v2", "profiles_cve", "security_score", "subnet_calc", "mtu_calc", "config_parser", "cloud_deploy", "export_pdf"]
     )
 
 # Mount static files (CSS, JS) - must be after all API routes

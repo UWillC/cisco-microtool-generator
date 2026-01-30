@@ -1754,6 +1754,48 @@ if (scoreRefreshBtn) {
   scoreRefreshBtn.addEventListener("click", refreshSecurityScoreWidget);
 }
 
+// v0.4.2: Export PDF button
+const scoreExportPdfBtn = document.getElementById("score-export-pdf");
+if (scoreExportPdfBtn) {
+  scoreExportPdfBtn.addEventListener("click", async () => {
+    scoreExportPdfBtn.disabled = true;
+    scoreExportPdfBtn.textContent = "Generating...";
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/export/security-report`);
+      if (!res.ok) {
+        throw new Error(`Export failed (${res.status})`);
+      }
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = res.headers.get("Content-Disposition");
+      let filename = "security-report.pdf";
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename=(.+)/);
+        if (match) filename = match[1];
+      }
+
+      // Download the PDF
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      showToast("Export PDF", "Security report downloaded successfully!");
+    } catch (err) {
+      showToast("Export PDF", `Error: ${err.message}`, true);
+    } finally {
+      scoreExportPdfBtn.disabled = false;
+      scoreExportPdfBtn.textContent = "Export PDF";
+    }
+  });
+}
+
 // -----------------------------
 // Hints panels (collapsible + click-to-copy)
 // -----------------------------
