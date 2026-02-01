@@ -1,70 +1,87 @@
 # ROADMAP — NetDevOps Micro-Tools
 
-Current version: **v0.3.4**
-Last updated: 2026-01-07
+Current version: **v0.4.3** (LIVE)
+Live URL: https://netdevops-micro-tools.onrender.com
+Last updated: 2026-02-01
 
 ---
 
-## ✅ Completed (v0.1.0 → v0.3.4)
+## ✅ Completed (v0.1.0 → v0.4.3)
 
-### v0.1.0 — MVP Release
+### v0.1.0 — MVP Release (Dec 2025)
 - [x] FastAPI backend with SNMPv3, NTP, AAA, Golden Config generators
 - [x] Initial CVE Analyzer (static demo dataset)
 - [x] Dockerized API
 - [x] Web UI with generators and CVE tab
 - [x] Basic profiles (Lab / Branch / Datacenter)
 
-### v0.2.0 — Product Shaping
+### v0.2.0 — Product Shaping (Dec 2025)
 - [x] CVE Engine v0.2 with JSON-based dataset
 - [x] Web UI v2 (sidebar layout, CVE dashboard)
 - [x] Profiles v2 (backend-driven, save/load/delete)
 - [x] Security posture summary panel
 - [x] Services and models layer architecture
 
-### v0.3.x — External Integration
+### v0.3.x — External Integration (Dec 2025 - Jan 2026)
 - [x] CVE Engine v0.3 with provider architecture
 - [x] NVD API v2.0 enrichment (real external integration)
 - [x] CVSS, CWE, references fields
-- [x] Safe merge strategy (local JSON as source of truth)
-
-### v0.3.4 — Stability & Performance
 - [x] NVD response caching (file-based, 24h TTL)
-- [x] Graceful error handling (HttpTimeoutError, HttpConnectionError)
-- [x] Real CVE data (CVE-2023-20198, CVE-2023-20273, CVE-2025-20188)
-- [x] .gitignore and project cleanup
+- [x] Profiles × CVE integration
+- [x] Vulnerability Status widget in Web UI
+
+### v0.4.0 — Security Score (Jan 2026)
+- [x] Security Score (0-100 per profile)
+- [x] Score algorithm with CVE penalties and modifiers
+- [x] Security Score widget in Web UI
+
+### v0.4.1 — Cloud Deployment (Jan 2026)
+- [x] **LIVE on Render** — https://netdevops-micro-tools.onrender.com
+- [x] Backend serves frontend (single deployment)
+- [x] render.yaml for one-click deploy
+
+### v0.4.2 — Export PDF (Jan 2026)
+- [x] PDF security reports
+- [x] Export button in Security Scores widget
+
+### v0.4.3 — CLI Tool + New Modules (Jan 2026)
+- [x] CLI tool for power users (click framework)
+- [x] iPerf3 Command Generator
+- [x] IP Subnet Calculator (5 endpoints)
+- [x] MTU Calculator (tunnel overhead)
+- [x] Config Parser (show run → JSON)
+- [x] SNMP Multi-Host Generator
+- [x] NTP v2 (network tier hierarchy)
+- [x] AAA v2.1 (SSH prerequisites, local fallback)
+- [x] Golden Config v2 (modular baseline)
+- [x] Verification Tooltips (~120 educational hints)
 
 ---
 
-## 🎯 Next: v0.3.5 — Profile Intelligence
+## 🎯 Current Phase: Validation (Q1 2026)
 
-Focus: Connect profiles with CVE analysis.
+Focus: Confirm product-market fit before monetization.
 
-### Planned features
+### Targets
 
-#### 1. Profiles × CVE Integration
-- "Which saved profiles are affected by known CVEs?"
-- Cross-reference profile IOS versions with CVE database
-- Alert panel in Profiles tab
-- Batch analysis endpoint
+| Metric | Target | Status |
+|--------|--------|--------|
+| Discovery calls | 5 | 🔴 0/5 |
+| Beta users | 10 | 🔴 0/10 |
+| LinkedIn followers | 500 | 🟡 ~50 |
 
-#### 2. Security Score (0-100)
-- Aggregate score based on:
-  - Number of critical/high CVEs
-  - Max CVSS score
-  - Availability of fixes
-- Visual indicator in Web UI per profile
-- Score history tracking
+### Key Activities
 
-#### 3. Web UI Improvements
-- Loading states during NVD enrichment
-- Profile vulnerability badges
-- One-click "Check all profiles" button
+- [ ] Discovery calls with network engineers
+- [ ] LinkedIn content (3x/week)
+- [ ] Demo at Kirk Byers conference (March 9-12)
+- [ ] Collect beta tester feedback
 
 ---
 
-## 🚀 v0.4.0 — SaaS Readiness
+## 🚀 v0.5.0 — SaaS Monetization (Q2 2026)
 
-Focus: Multi-user support and cloud deployment.
+Focus: Multi-user support and billing.
 
 ### Authentication & Authorization
 - [ ] User registration and login
@@ -78,48 +95,40 @@ Focus: Multi-user support and cloud deployment.
 
 ### Billing Integration
 - [ ] Stripe integration
-- [ ] Subscription tiers (Free / Pro)
+- [ ] Subscription tiers (Free / Pro / Team)
 - [ ] Usage-based billing option
-
-### Cloud Deployment
-- [ ] Railway / Render / Fly.io deployment
-- [ ] Environment configuration
-- [ ] Health monitoring
 
 ---
 
-## 🔮 Future (v0.5.0+)
+## 🔮 Future (v0.6.0+)
+
+### CVE Mitigation Advisor (Killer Feature)
+- [ ] Hardening config recommendations per CVE
+- [ ] Patch recommendations
+- [ ] Risk explanations
+- [ ] Links to Cisco PSIRT and Field Notices
+- **Note:** ZERO competition in this space
 
 ### External Data Providers
 - [ ] Cisco PSIRT Advisory integration
 - [ ] Tenable vulnerability scanner integration
 - [ ] Custom CVE dataset upload
 
-### Export & Reporting
-- [ ] PDF security reports
-- [ ] Markdown export
-- [ ] Scheduled email reports
-
-### CLI Tool
-- [ ] Terminal-based interface for power users
-- [ ] Scriptable config generation
-- [ ] CI/CD integration support
-
 ### Advanced Features
 - [ ] Config diff / drift detection
 - [ ] Compliance checking (CIS benchmarks)
 - [ ] Network topology awareness
+- [ ] Scheduled email reports
 
 ---
 
-## 📊 Success Metrics (Q1 2026)
+## 📊 2026 Goals
 
-| Metric | Target |
-|--------|--------|
-| Beta users | 10 |
-| Discovery calls | 5 |
-| API uptime | 99% |
-| NVD cache hit rate | >80% |
+| Metric | Q1 | Q2 | EOY |
+|--------|-----|-----|-----|
+| Beta users | 10 | — | — |
+| Paying customers | — | 5 | 50 |
+| MRR | $0 | $50 | $500 |
 
 ---
 

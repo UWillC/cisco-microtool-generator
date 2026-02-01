@@ -4,6 +4,66 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.4.3] – 2026-01-31
+
+### Added
+
+- **CLI Tool** — terminal interface for power users:
+  - Commands: `snmpv3`, `ntp`, `aaa`, `golden`, `subnet`, `mtu`, `cve`, `parse`, `health`.
+  - Framework: click.
+  - Connects to API via `NETDEVOPS_API_URL` (default: Render cloud).
+- New dependency: `click`, `requests`.
+
+---
+
+## [v0.4.2] – 2026-01-30
+
+### Added
+
+- **Export PDF** — security report as downloadable PDF:
+  - New endpoint `GET /export/security-report`.
+  - Uses `fpdf2` library for PDF generation.
+  - Report includes: executive summary, score breakdown, CVE details per profile.
+- Frontend: "Export PDF" button in Security Scores widget.
+
+---
+
+## [v0.4.1] – 2026-01-29
+
+### Added
+
+- **Cloud Deployment** — product is now LIVE on Render!
+  - Live URL: https://netdevops-micro-tools.onrender.com
+  - API Docs: https://netdevops-micro-tools.onrender.com/docs
+- Backend serves frontend files (`/`, `/style.css`, `/app.js`).
+- Auto-detect `API_BASE_URL` (file://, localhost, cloud).
+- `render.yaml` for one-click deployment.
+
+### New Modules (January 2026)
+
+- **iPerf3 Command Generator** (v1.0):
+  - TCP/UDP tests, link speeds (100M/1G/10G), directions.
+  - Hints panel with quick reference commands.
+- **IP Subnet Calculator** (v1.0):
+  - Subnet info, split, supernet, CIDR reference table.
+  - 5 endpoints under `/tools/subnet/*`.
+- **MTU Calculator** (v1.0):
+  - Tunnel overhead calculation (GRE, IPSec, VXLAN, MPLS, LISP).
+  - TCP MSS recommendations, Cisco config suggestions.
+- **Config Parser** (v1.0):
+  - Parse `show running-config` to structured JSON.
+  - Extracts: hostname, interfaces, SNMP, NTP, AAA, users, banners.
+
+### Improved
+
+- **SNMP Multi-Host Generator** — per-host settings, specific traps, logging section.
+- **NTP v2** — network tier hierarchy (CORE/DIST/ACCESS), NTP master, peer support.
+- **AAA v2.1** — SSH prerequisites, local fallback user, server groups.
+- **Golden Config v2** — modular baseline sections, custom banner.
+- **Verification Tooltips** — ~120 educational tooltips with example output.
+
+---
+
 ## [v0.4.0] – 2026-01-13
 
 ### Added
@@ -212,6 +272,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - Authentication and multi-user support.
-- Security Score feature (aggregate risk metric).
-- Export formats (Markdown / JSON).
+- Stripe billing integration.
+- CVE Mitigation Advisor (hardening recommendations).
+- Cisco PSIRT / Tenable integrations.
 - Advanced Profiles UX (rename, duplicate, diff preview).

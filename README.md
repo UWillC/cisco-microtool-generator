@@ -1,15 +1,18 @@
 # NetDevOps Micro-Tools
 
-![Version](https://img.shields.io/badge/version-0.3.5-blue)
+![Version](https://img.shields.io/badge/version-0.4.3-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-green)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+![Status](https://img.shields.io/badge/status-LIVE-brightgreen)
 
 **Small tools. Real automation. AI-assisted.**
 
+🚀 **Live:** https://netdevops-micro-tools.onrender.com
+
 ![Demo](demo/netdevops-demo.gif)
 
-A **micro-SaaS–oriented backend + Web UI** for generating **secure Cisco IOS / IOS XE configurations**
-and performing **lightweight security analysis** (CVE awareness).
+A **micro-SaaS backend + Web UI** for generating **secure Cisco IOS / IOS XE configurations**,
+performing **security analysis** (CVE awareness), and **network calculations**.
 
 This project is built publicly as an engineering-focused product prototype, with emphasis on:
 - secure-by-default configuration patterns,
@@ -60,27 +63,64 @@ NetDevOps Micro-Tools aims to solve this by providing:
 
 #### Golden Config Builder
 - Combine SNMPv3 / NTP / AAA snippets
-- Generate a baseline hardened device configuration
+- Modular baseline sections (Banner, Logging, Security)
+- Custom banner text support
 - Designed to evolve into compliance / drift detection workflows
+
+### 🧮 Network Tools
+
+#### iPerf3 Command Generator
+- TCP/UDP throughput tests
+- Link speeds: 100M / 1G / 10G
+- Directions: upload / download / bidirectional
+- Hints panel with quick reference
+
+#### IP Subnet Calculator
+- Subnet info (network, broadcast, host range)
+- Subnet splitting and supernetting
+- CIDR ↔ Netmask conversion
+- Full CIDR reference table (/8 to /32)
+
+#### MTU Calculator
+- Tunnel overhead calculation
+- Supports: GRE, IPSec, VXLAN, MPLS, LISP, GRE over IPSec
+- TCP MSS recommendations
+- Cisco config suggestions
+
+#### Config Parser
+- Parse `show running-config` to structured JSON
+- Extracts: hostname, interfaces, SNMP, NTP, AAA, users, banners
+- Summary mode for quick stats
+
+### 💻 CLI Tool (v0.4.3)
+
+Terminal interface for power users:
+```bash
+pip install click requests
+python cli.py snmpv3 --host 10.0.0.1 --user monitoring
+python cli.py subnet info 192.168.1.0/24
+python cli.py cve --platform "Cisco IOS XE" --version 17.3.1
+```
 
 ---
 
-## 🔐 CVE Analyzer (v0.3.5)
+## 🔐 CVE Analyzer & Security Score
 
-A lightweight CVE awareness engine focused on Cisco IOS XE with optional NVD enrichment.
+A lightweight CVE awareness engine focused on Cisco IOS XE with NVD enrichment.
 
 **Capabilities:**
 - Platform + software version matching
 - Severity classification (critical / high / medium / low)
 - Upgrade recommendations based on known fixed versions
-- Structured JSON output via API
-- Real-time NVD API enrichment (opt-in via `CVE_NVD_ENRICH=1`)
+- **Security Score** (0-100) per device profile
+- **Export PDF** security reports
+- Real-time NVD API enrichment
 
-**v0.3.5 highlights:**
+**Key features:**
 - **Profiles × CVE** — batch vulnerability checking across all device profiles
-- **Vulnerability Status widget** — see affected profiles at a glance in Web UI
+- **Security Score** — numeric assessment with CVE breakdown and modifiers
+- **PDF Export** — downloadable security reports
 - **File-based cache** — NVD responses cached for 24h (eliminates rate limiting)
-- **Real CVE data** — CVE-2023-20198, CVE-2023-20273, CVE-2025-20188 (validated)
 
 **Data enrichment fields:**
 - CVSS score and vector
@@ -245,24 +285,23 @@ are persisted across container restarts.
 
 ## 🛣 Roadmap (high level)
 
-**v0.3.5 (current):** ✅
-- Profiles × CVE integration
-- Vulnerability Status widget in Web UI
-- Batch vulnerability checking API
+**v0.4.3 (current):** ✅ LIVE
+- 12 production modules (generators, analyzers, calculators)
+- Cloud deployment on Render
+- CLI tool for power users
+- PDF security reports
+- Security Score (0-100)
 
-**v0.3.6 (next):**
-- Security Score (0-100 per profile)
-- Export formats (Markdown / JSON reports)
-
-**v0.4.0 (SaaS):**
+**v0.5.0 (next):**
 - Authentication & multi-user mode
 - Stripe billing integration
-- Cloud deployment (Railway / Render / Fly.io)
+- User-scoped profiles and history
 
 **Future:**
+- CVE Mitigation Advisor (hardening recommendations)
 - Cisco PSIRT / Tenable integrations
-- PDF security reports
-- CLI tool for power users
+- Config drift detection
+- Compliance checking (CIS benchmarks)
 
 See `CHANGELOG.md` for version history.
 
