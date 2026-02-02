@@ -700,6 +700,18 @@ if (iperfForm && iperfOutput) {
     try {
       const data = await postJSON("/generate/iperf", payload);
       iperfOutput.value = data.config || "";
+
+      // Update download filename based on format
+      const downloadBtn = document.querySelector('[data-download-target="iperf-output"]');
+      if (downloadBtn) {
+        const formatExtensions = {
+          cli: "iperf3_commands.txt",
+          bash: "iperf3_test.sh",
+          powershell: "iperf3_test.ps1",
+          python: "iperf3_test.py",
+        };
+        downloadBtn.dataset.filename = formatExtensions[payload.output_format] || "iperf3_commands.txt";
+      }
     } catch (err) {
       iperfOutput.value = `Error: ${err.message}`;
     }

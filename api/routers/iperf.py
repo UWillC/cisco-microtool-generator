@@ -37,7 +37,7 @@ class IPerfRequest(BaseModel):
     output_filename: Optional[str] = None
 
     # Output format
-    output_format: str = "cli"  # cli / script
+    output_format: str = "cli"  # cli / bash / powershell / python
 
 
 # -----------------------------
@@ -274,14 +274,179 @@ def generate_iperf_script(req: IPerfRequest) -> str:
     return "\n".join(lines)
 
 
+def generate_powershell_script(req: IPerfRequest) -> str:
+    """Generate PowerShell script for complete test"""
+    lines = []
+    link_label = get_link_speed_label(req.link_speed)
+
+    lines.append("# iPerf3 Automated Test Script (PowerShell)")
+    lines.append(f"# Link: {link_label} | Type: {req.test_type.upper()} | Duration: {req.duration}s")
+    lines.append("")
+    lines.append(f'$Server = "{req.server_ip}"')
+    lines.append(f"$Port = {req.port}")
+    lines.append(f"$Duration = {req.duration}")
+    lines.append(f"$Interval = {req.interval}")
+    lines.append('$Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"')
+    lines.append('$OutputDir = ".\\iperf_results"')
+    lines.append("")
+    lines.append("# Create output directory")
+    lines.append("if (!(Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir | Out-Null }")
+    lines.append("")
+    lines.append('Write-Host "Starting iPerf3 test..."')
+    lines.append(f'Write-Host "Server: $Server | Duration: {req.duration}s"')
+    lines.append("")
+
+    if req.test_type == "tcp":
+        lines.append("# TCP Test")
+        cmd = f'iperf3 -c $Server -p $Port -P {req.parallel_streams} -t $Duration -i $Interval'
+        if req.direction == "download":
+            cmd += " -R"
+        elif req.direction == "bidirectional":
+            cmd += " --bidir"
+        cmd += ' -J --timestamps | Out-File "$OutputDir\\tcp_$Timestamp.json"'
+        lines.append(cmd)
+
+    elif req.test_type == "udp":
+        bandwidth = req.target_bandwidth or get_bandwidth_for_link(req.link_speed, req.direction)
+        lines.append("# UDP Test")
+        cmd = f'iperf3 -c $Server -p $Port -u -b {bandwidth} -t $Duration -i $Interval'
+        if req.direction == "download":
+            cmd += " -R"
+        elif req.direction == "bidirectional":
+            cmd += " --bidir"
+        cmd += ' -J --timestamps | Out-File "$OutputDir\\udp_$Timestamp.json"'
+        lines.append(cmd)
+
+    else:  # both
+        bandwidth = req.target_bandwidth or get_bandwidth_for_link(req.link_speed, req.direction)
+        lines.append("# Run TCP and UDP tests")
+        lines.append("Write-Host 'Starting TCP test...'")
+        tcp_cmd = f'iperf3 -c $Server -p $Port -P {req.parallel_streams} -t $Duration -i $Interval'
+        if req.direction == "download":
+            tcp_cmd += " -R"
+        elif req.direction == "bidirectional":
+            tcp_cmd += " --bidir"
+        tcp_cmd += ' -J --timestamps | Out-File "$OutputDir\\tcp_$Timestamp.json"'
+        lines.append(tcp_cmd)
+        lines.append("")
+        lines.append("Write-Host 'Starting UDP test...'")
+        udp_cmd = f'iperf3 -c $Server -p {req.port_secondary} -u -b {bandwidth} -t $Duration -i $Interval'
+        if req.direction == "download":
+            udp_cmd += " -R"
+        elif req.direction == "bidirectional":
+            udp_cmd += " --bidir"
+        udp_cmd += ' -J --timestamps | Out-File "$OutputDir\\udp_$Timestamp.json"'
+        lines.append(udp_cmd)
+
+    lines.append("")
+    lines.append('Write-Host "Test complete. Results saved to $OutputDir"')
+
+    return "\n".join(lines)
+
+
+def generate_python_script(req: IPerfRequest) -> str:
+    """Generate Python script for complete test"""
+    lines = []
+    link_label = get_link_speed_label(req.link_speed)
+    bandwidth = req.target_bandwidth or get_bandwidth_for_link(req.link_speed, req.direction)
+
+    lines.append('#!/usr/bin/env python3')
+    lines.append('"""')
+    lines.append(f'iPerf3 Automated Test Script')
+    lines.append(f'Link: {link_label} | Type: {req.test_type.upper()} | Duration: {req.duration}s')
+    lines.append('"""')
+    lines.append('')
+    lines.append('import subprocess')
+    lines.append('import os')
+    lines.append('from datetime import datetime')
+    lines.append('')
+    lines.append('# Configuration')
+    lines.append(f'SERVER = "{req.server_ip}"')
+    lines.append(f'PORT = {req.port}')
+    lines.append(f'PORT_SECONDARY = {req.port_secondary}')
+    lines.append(f'DURATION = {req.duration}')
+    lines.append(f'INTERVAL = {req.interval}')
+    lines.append(f'PARALLEL = {req.parallel_streams}')
+    lines.append(f'BANDWIDTH = "{bandwidth}"')
+    lines.append('')
+    lines.append('# Setup')
+    lines.append('timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")')
+    lines.append('output_dir = "./iperf_results"')
+    lines.append('os.makedirs(output_dir, exist_ok=True)')
+    lines.append('')
+    lines.append('def run_iperf(args: list, output_file: str):')
+    lines.append('    """Run iperf3 and save results"""')
+    lines.append('    cmd = ["iperf3"] + args')
+    lines.append('    print(f"Running: {' + "' '.join(cmd)" + '}")')
+    lines.append('    with open(output_file, "w") as f:')
+    lines.append('        subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT)')
+    lines.append('    print(f"Results saved to {output_file}")')
+    lines.append('')
+    lines.append('if __name__ == "__main__":')
+    lines.append('    print(f"Starting iPerf3 test to {SERVER}...")')
+    lines.append('')
+
+    if req.test_type == "tcp":
+        lines.append('    # TCP Test')
+        args = f'["-c", SERVER, "-p", str(PORT), "-P", str(PARALLEL), "-t", str(DURATION), "-i", str(INTERVAL)'
+        if req.direction == "download":
+            args += ', "-R"'
+        elif req.direction == "bidirectional":
+            args += ', "--bidir"'
+        args += ', "-J", "--timestamps"]'
+        lines.append(f'    tcp_args = {args}')
+        lines.append('    run_iperf(tcp_args, f"{output_dir}/tcp_{timestamp}.json")')
+
+    elif req.test_type == "udp":
+        lines.append('    # UDP Test')
+        args = f'["-c", SERVER, "-p", str(PORT), "-u", "-b", BANDWIDTH, "-t", str(DURATION), "-i", str(INTERVAL)'
+        if req.direction == "download":
+            args += ', "-R"'
+        elif req.direction == "bidirectional":
+            args += ', "--bidir"'
+        args += ', "-J", "--timestamps"]'
+        lines.append(f'    udp_args = {args}')
+        lines.append('    run_iperf(udp_args, f"{output_dir}/udp_{timestamp}.json")')
+
+    else:  # both
+        lines.append('    # TCP Test')
+        tcp_args = f'["-c", SERVER, "-p", str(PORT), "-P", str(PARALLEL), "-t", str(DURATION), "-i", str(INTERVAL)'
+        if req.direction == "download":
+            tcp_args += ', "-R"'
+        elif req.direction == "bidirectional":
+            tcp_args += ', "--bidir"'
+        tcp_args += ', "-J", "--timestamps"]'
+        lines.append(f'    tcp_args = {tcp_args}')
+        lines.append('    run_iperf(tcp_args, f"{output_dir}/tcp_{timestamp}.json")')
+        lines.append('')
+        lines.append('    # UDP Test')
+        udp_args = f'["-c", SERVER, "-p", str(PORT_SECONDARY), "-u", "-b", BANDWIDTH, "-t", str(DURATION), "-i", str(INTERVAL)'
+        if req.direction == "download":
+            udp_args += ', "-R"'
+        elif req.direction == "bidirectional":
+            udp_args += ', "--bidir"'
+        udp_args += ', "-J", "--timestamps"]'
+        lines.append(f'    udp_args = {udp_args}')
+        lines.append('    run_iperf(udp_args, f"{output_dir}/udp_{timestamp}.json")')
+
+    lines.append('')
+    lines.append('    print("Test complete!")')
+
+    return "\n".join(lines)
+
+
 # -----------------------------
 # API Endpoint
 # -----------------------------
 @router.post("/iperf")
 def generate_iperf(req: IPerfRequest):
-    if req.output_format == "script":
+    if req.output_format in ("bash", "script"):  # "script" for backward compatibility
         output = generate_iperf_script(req)
-    else:
+    elif req.output_format == "powershell":
+        output = generate_powershell_script(req)
+    elif req.output_format == "python":
+        output = generate_python_script(req)
+    else:  # cli
         output = generate_iperf_commands(req)
 
     return {
