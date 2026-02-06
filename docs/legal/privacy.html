@@ -5,10 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy | NetDevOps Micro-Tools</title>
     <meta name="description" content="Privacy Policy for NetDevOps Micro-Tools - How we collect, use, and protect your data.">
+
+    <!-- Open Graph / LinkedIn -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://netdevops-micro-tools.github.io/legal/privacy.html">
+    <meta property="og:title" content="Privacy Policy | NetDevOps Micro-Tools">
+    <meta property="og:description" content="Privacy Policy for NetDevOps Micro-Tools - How we collect, use, and protect your data.">
+    <meta property="og:image" content="https://netdevops-micro-tools.github.io/images/og-image.png">
+
+    <!-- Plausible Analytics -->
+    <script defer data-domain="netdevops-micro-tools.com" src="https://plausible.io/js/script.js"></script>
+
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230A3A60' width='100' height='100' rx='12'/><text x='50' y='62' font-family='monospace' font-size='28' font-weight='bold' fill='white' text-anchor='middle'>MTG</text><rect x='4' y='4' width='92' height='92' rx='10' fill='none' stroke='%234FB8D6' stroke-width='3'/></svg>">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/legal.css">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
@@ -19,209 +33,13 @@
             }
         })();
     </script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #0A3A60;
-            --secondary: #1E5B89;
-            --accent: #4FB8D6;
-            --bg-primary: #FFFFFF;
-            --bg-secondary: #F8FAFC;
-            --text-primary: #081A26;
-            --text-secondary: #475569;
-            --border-color: #E2E8F0;
-        }
-
-        [data-theme="dark"] {
-            --primary: #4FB8D6;
-            --secondary: #6BC5DE;
-            --accent: #4FB8D6;
-            --bg-primary: #0A0F14;
-            --bg-secondary: #111921;
-            --text-primary: #FFFFFF;
-            --text-secondary: #9BABB8;
-            --border-color: #243038;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root:not([data-theme="light"]) {
-                --primary: #4FB8D6;
-                --secondary: #6BC5DE;
-                --accent: #4FB8D6;
-                --bg-primary: #0A0F14;
-                --bg-secondary: #111921;
-                --text-primary: #FFFFFF;
-                --text-secondary: #9BABB8;
-                --border-color: #243038;
-            }
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.7;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-
-        /* Header */
-        .header {
-            padding: 24px 0;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 48px;
-        }
-
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-family: 'IBM Plex Sans', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        .back-link {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9375rem;
-            transition: color 0.2s ease;
-        }
-
-        .back-link:hover {
-            color: var(--primary);
-        }
-
-        /* Content */
-        .page-title {
-            font-family: 'IBM Plex Sans', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: var(--text-primary);
-        }
-
-        .last-updated {
-            color: var(--text-secondary);
-            font-size: 0.9375rem;
-            margin-bottom: 48px;
-        }
-
-        .section {
-            margin-bottom: 40px;
-        }
-
-        .section h2 {
-            font-family: 'IBM Plex Sans', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 16px;
-        }
-
-        .section h3 {
-            font-family: 'IBM Plex Sans', sans-serif;
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-top: 24px;
-            margin-bottom: 12px;
-        }
-
-        .section p {
-            margin-bottom: 16px;
-            color: var(--text-secondary);
-        }
-
-        .section ul {
-            margin-bottom: 16px;
-            padding-left: 24px;
-        }
-
-        .section li {
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-        }
-
-        .section a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        .section a:hover {
-            text-decoration: underline;
-        }
-
-        .highlight-box {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
-            margin: 24px 0;
-        }
-
-        .highlight-box p {
-            margin-bottom: 0;
-        }
-
-        /* Footer */
-        .footer {
-            margin-top: 64px;
-            padding: 32px 0;
-            border-top: 1px solid var(--border-color);
-            text-align: center;
-        }
-
-        .footer p {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        .footer a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        @media (max-width: 640px) {
-            .page-title {
-                font-size: 2rem;
-            }
-
-            .section h2 {
-                font-size: 1.25rem;
-            }
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
             <div class="header-content">
-                <a href="index.html" class="logo">NetDevOps Micro-Tools</a>
-                <a href="index.html" class="back-link">Back to Home</a>
+                <a href="../index.html" class="logo">NetDevOps Micro-Tools</a>
+                <a href="#" onclick="history.back(); return false;" class="back-link">← Back</a>
             </div>
         </header>
 
@@ -357,7 +175,7 @@
 
         <footer class="footer">
             <p>2026 NetDevOps Micro-Tools. All rights reserved.</p>
-            <p><a href="index.html">Back to Home</a></p>
+            <p><a href="#" onclick="history.back(); return false;">← Back</a></p>
         </footer>
     </div>
 </body>
